@@ -24,6 +24,7 @@
     "@better-auth/api-key": "~1.6.30",
     "@electric-sql/pglite": "^0.5.4",
     "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/comic-neue": "^5.3.0",
     "@fontsource/space-mono": "^5.3.0",
     "@fontsource/vt323": "^5.3.0",
     "@hookform/resolvers": "^5.7.0",

@@ -5,6 +5,8 @@
 @import "@fontsource/space-mono/400.css";
 @import "@fontsource/space-mono/700.css";
 @import "@fontsource/vt323/400.css";
+@import "@fontsource/comic-neue/400.css";
+@import "@fontsource/comic-neue/700.css";
 
 @theme {
   --color-bg: #0b0d0c;
@@ -204,95 +206,239 @@
    toggle is disabled in the UI — the personality owns the palette.
    ============================================================ */
 
-/* ---------------- HARDWARE — skeuomorphic instrument panel ---------------- */
+/* ---------------- HARDWARE — Windows XP / MS Paint tacky ---------------- */
+/* Gloriously earnest early-2000s: Luna blue title bars, Comic Sans, beveled  */
+/* buttons, a Bliss-ish desktop, a scrolling status ticker, and a Clippy-     */
+/* esque helper. The tackier, the more human.                                  */
 [data-personality="hardware"] {
-  --color-bg: #0e1013;
-  --color-surface: #1e2226;
-  --color-surface-2: #272c31;
-  --color-fg: #ece7d9;
-  --color-muted: #a29c8c;
-  --color-subtle: #6f695c;
-  --color-border: rgb(236 231 217 / 0.12);
-  --color-border-strong: rgb(236 231 217 / 0.24);
-  --color-solar: #f0a832;
-  --color-solar-dim: rgb(240 168 50 / 0.18);
-  --color-home: #ece7d9;
-  --color-home-dim: rgb(236 231 217 / 0.1);
-  --color-battery: #46c08a;
-  --color-battery-dim: rgb(70 192 138 / 0.18);
-  --color-grid: #6fa8d8;
-  --color-grid-dim: rgb(111 168 216 / 0.18);
-  --color-danger: #e0574a;
-  --color-ok: #5cc47e;
-  --color-warn: #e8a33d;
-  --font-sans: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
-  --font-mono: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --color-bg: #245edb;
+  --color-surface: #ece9d8;
+  --color-surface-2: #f7f5e8;
+  --color-fg: #000000;
+  --color-muted: #3f3f3f;
+  --color-subtle: #6d6d6d;
+  --color-border: #919b9c;
+  --color-border-strong: #003c74;
+  --color-solar: #b45f00;
+  --color-solar-dim: rgb(180 95 0 / 0.14);
+  --color-home: #000000;
+  --color-home-dim: rgb(0 0 0 / 0.08);
+  --color-battery: #2e8b47;
+  --color-battery-dim: rgb(46 139 71 / 0.14);
+  --color-grid: #1c5faa;
+  --color-grid-dim: rgb(28 95 170 / 0.14);
+  --color-danger: #c00000;
+  --color-ok: #2e8b47;
+  --color-warn: #b56a00;
+  --font-sans: "Comic Neue", "Comic Sans MS", "Chalkboard SE", "Segoe Print", cursive;
+  --font-mono: "Comic Neue", "Comic Sans MS", "Chalkboard SE", "Segoe Print", cursive;
   --radius-xs: 2px;
   --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
+  --radius-md: 3px;
+  --radius-lg: 8px;
   --radius-xl: 8px;
   --shadow-border:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 2px 8px rgb(0 0 0 / 0.55),
-    0 0 0 1px rgb(0 0 0 / 0.6);
-  --gauge-tick: #ece7d9;
-  --gauge-label: #a29c8c;
-  --gauge-track: rgb(236 231 217 / 0.12);
-  --gauge-hub: #272c31;
-  --gauge-well: #0a0c0e;
-  --gauge-well-border: rgb(0 0 0 / 0.7);
-  --gauge-well-text: #f0a832;
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #aca899,
+    2px 2px 6px rgb(0 0 0 / 0.35);
+  --gauge-tick: #000000;
+  --gauge-label: #3f3f3f;
+  --gauge-track: #ffffff;
+  --gauge-hub: #ece9d8;
+  --gauge-well: #ffffff;
+  --gauge-well-border: #7f7f7f;
+  --gauge-well-text: #000000;
 }
 
+/* Classic XP text selection */
+[data-personality="hardware"] ::selection {
+  background: #316ac5;
+  color: #ffffff;
+}
+
+/* Bliss-ish desktop: blue sky, green hill, fixed like wallpaper */
 [data-personality="hardware"] body {
-  background-color: var(--color-bg);
+  background-color: #245edb;
   background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgb(255 255 255 / 0.022) 0 1px,
-      transparent 1px 3px
-    ),
-    radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / 0.05), transparent 60%);
+    radial-gradient(ellipse 130% 46% at 50% 118%, #62a84b 0%, #3f8a34 34%, transparent 62%),
+    linear-gradient(180deg, #1c4fb8 0%, #2f6fd6 34%, #5b9fe9 78%, #8fc3f0 100%);
+  background-attachment: fixed;
+}
+/* The app shell paints bg-bg over the body — punch through to the wallpaper */
+[data-personality="hardware"] .min-h-dvh.bg-bg {
+  background-color: transparent;
+  background-image:
+    radial-gradient(ellipse 130% 46% at 50% 118%, #62a84b 0%, #3f8a34 34%, transparent 62%),
+    linear-gradient(180deg, #1c4fb8 0%, #2f6fd6 34%, #5b9fe9 78%, #8fc3f0 100%);
+  background-attachment: fixed;
 }
 
-/* Metal plates with corner screws. article = the four metric tiles. */
+/* Page headline becomes a full XP window title bar */
+[data-personality="hardware"] h1 {
+  display: block;
+  background: linear-gradient(180deg,
+    #0058e6 0%, #3a93ff 4%, #288eff 8%, #127dff 20%,
+    #036ffc 40%, #0262ee 60%, #0057e5 80%, #0136b8 100%);
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgb(0 0 0 / 0.55);
+  border-radius: 8px 8px 0 0;
+  padding: 5px 10px 7px;
+  letter-spacing: 0;
+}
+[data-personality="hardware"] h1::before {
+  content: "\263A  ";
+}
+[data-personality="hardware"] h1::after {
+  content: "_  \25A1  \D7";
+  float: right;
+  font-size: 0.62em;
+  line-height: 2;
+  letter-spacing: 0.28em;
+  background: rgb(255 255 255 / 0.16);
+  border: 1px solid rgb(255 255 255 / 0.75);
+  border-radius: 3px;
+  padding: 0 4px 0 7px;
+  text-shadow: none;
+}
+
+/* Metric tiles are little XP windows: blue frame, title-bar header */
 [data-personality="hardware"] article {
   background-color: var(--color-surface);
-  background-image:
-    radial-gradient(circle, #5b626a 0 2px, #141619 2.8px, transparent 3.4px),
-    radial-gradient(circle, #5b626a 0 2px, #141619 2.8px, transparent 3.4px),
-    radial-gradient(circle, #5b626a 0 2px, #141619 2.8px, transparent 3.4px),
-    radial-gradient(circle, #5b626a 0 2px, #141619 2.8px, transparent 3.4px),
-    repeating-linear-gradient(
-      90deg,
-      rgb(255 255 255 / 0.025) 0 1px,
-      transparent 1px 3px
-    );
-  background-repeat: no-repeat;
-  background-position:
-    9px 9px,
-    calc(100% - 9px) 9px,
-    9px calc(100% - 9px),
-    calc(100% - 9px) calc(100% - 9px),
-    0 0;
-  background-size: 7px 7px, 7px 7px, 7px 7px, 7px 7px, auto;
-  border: 1px solid rgb(0 0 0 / 0.65);
+  background-image: none;
+  border: 3px solid;
+  border-color: #3a93ff #003c74 #003c74 #3a93ff;
+  border-radius: 8px 8px 4px 4px;
 }
-
-/* Engraved silkscreen labels */
-[data-personality="hardware"] .uppercase {
+[data-personality="hardware"] article header {
+  position: relative;
+  margin: -0.5rem -0.5rem 0.75rem;
+  padding: 4px 8px 6px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(180deg,
+    #0058e6 0%, #3a93ff 4%, #288eff 8%, #127dff 20%,
+    #036ffc 40%, #0262ee 60%, #0057e5 80%, #0136b8 100%);
+}
+/* The decorative SVG icon gives way to real caption buttons */
+[data-personality="hardware"] article header > span {
+  display: none;
+}
+[data-personality="hardware"] article header::after {
+  content: "_  \25A1  \D7";
+  font-size: 11px;
   letter-spacing: 0.3em;
+  color: #ffffff;
+  background: rgb(255 255 255 / 0.16);
+  border: 1px solid rgb(255 255 255 / 0.75);
+  border-radius: 3px;
+  padding: 1px 3px 1px 6px;
+  text-shadow: 1px 1px 0 rgb(0 0 0 / 0.5);
 }
 [data-personality="hardware"] article header p {
-  color: var(--color-muted);
-  text-shadow:
-    0 -1px 0 rgb(0 0 0 / 0.9),
-    0 1px 0 rgb(255 255 255 / 0.1);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 1px 1px 0 rgb(0 0 0 / 0.55);
+  text-transform: none;
+}
+[data-personality="hardware"] article header p::before {
+  content: "\2605  ";
+}
+[data-personality="hardware"] .uppercase {
+  letter-spacing: 0.04em;
 }
 [data-personality="hardware"] article .font-mono {
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+/* XP segmented progress bar for the battery charge rail */
+[data-personality="hardware"] article div[class*="bg-surface-2"] {
+  background: #ffffff;
+  border: 1px solid #7f7f7f;
+  box-shadow: inset 1px 1px 2px rgb(0 0 0 / 0.25);
+  border-radius: 0;
+  overflow: hidden;
+}
+[data-personality="hardware"] article div[class*="bg-surface-2"] > div {
+  background: repeating-linear-gradient(90deg, #3d9b3d 0 7px, rgb(255 255 255 / 0.35) 7px 9px);
+  border-radius: 0;
+}
+
+/* Beveled Luna buttons everywhere */
+[data-personality="hardware"] button {
+  font-family: var(--font-sans);
+  color: #000000;
+  background: linear-gradient(180deg, #ffffff 0%, #ecebe5 45%, #d8d0c4 46%, #f2f0e9 100%);
+  border: 1px solid #003c74;
+  border-radius: 3px;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #aca899;
+  text-shadow: none;
+}
+[data-personality="hardware"] button:active {
+  box-shadow: inset -1px -1px 0 #ffffff, inset 1px 1px 0 #aca899;
+  background: linear-gradient(180deg, #e2ded2 0%, #d8d0c4 100%);
+}
+
+/* Peak-2003 web: underlined blue links */
+[data-personality="hardware"] a {
+  color: #0000cc;
+  text-decoration: underline;
+}
+
+/* Scrolling news-ticker status line */
+[data-personality="hardware"] [role="status"] {
+  overflow: hidden;
+  background: #ffffe1;
+  border: 1px solid #000000;
+}
+@keyframes xp-ticker {
+  from { transform: translateX(102%); }
+  to { transform: translateX(-112%); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-personality="hardware"] [role="status"] > p:nth-of-type(2) {
+    display: inline-block;
+    white-space: nowrap;
+    max-width: none;
+    animation: xp-ticker 9s linear infinite;
+  }
+}
+
+/* Clippy-esque helper: CSS paperclip + Office balloon. Decorative only —   */
+/* pointer-events none so it never blocks taps.                             */
+[data-personality="hardware"] body::before {
+  content: "";
+  position: fixed;
+  right: 24px;
+  bottom: 104px;
+  width: 20px;
+  height: 56px;
+  border: 4px solid #d4d0c8;
+  border-radius: 11px;
+  box-shadow:
+    inset 0 0 0 2px #ffffff,
+    inset 0 0 0 5px #a9a9a9,
+    2px 2px 5px rgb(0 0 0 / 0.45);
+  transform: rotate(10deg);
+  z-index: 61;
+  pointer-events: none;
+}
+[data-personality="hardware"] body::after {
+  content: "It looks like you're trying to monitor your solar array! \263A Need a hand with anything?";
+  position: fixed;
+  right: 12px;
+  bottom: 172px;
+  max-width: 218px;
+  background: #ffffe1;
+  color: #000000;
+  border: 1px solid #000000;
+  box-shadow: 3px 3px 0 rgb(0 0 0 / 0.25);
+  font-family: "Comic Neue", "Comic Sans MS", cursive;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  z-index: 61;
+  pointer-events: none;
 }
 
 /* ---------------- WORKBENCH — brutalist engineering notebook ---------------- */
