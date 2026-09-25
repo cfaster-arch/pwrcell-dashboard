@@ -12,7 +12,6 @@ import {
   YAxis,
 } from "recharts";
 import { clockLabel, formatKwh, weekdayLabel } from "@/lib/pwrcell/format";
-import { cn } from "@/lib/utils";
 import type { DayAggregate, HistoryRange } from "@/routes/api/history";
 
 export type MetricKey = "solar" | "home" | "battery" | "grid";
@@ -306,23 +305,22 @@ export function MetricDetail({
           <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
             {cfg.label} power (kW)
           </h2>
-          <div className="flex rounded-md bg-surface-2 p-1" role="tablist" aria-label="Chart range">
-            {METRIC_RANGES.map((r) => (
-              <button
-                key={r.minutes}
-                type="button"
-                role="tab"
-                aria-selected={minutes === r.minutes}
-                onClick={() => onMinutes(r.minutes)}
-                className={cn(
-                  "min-h-11 min-w-16 rounded-sm px-3 font-medium tracking-wide transition-[background-color,color,transform] duration-150 ease-out",
-                  "active:scale-[0.96]",
-                  minutes === r.minutes ? "bg-fg text-bg" : "text-muted hover:text-fg",
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
+          <div>
+            <label htmlFor="chart-range" className="sr-only">
+              Chart range
+            </label>
+            <select
+              id="chart-range"
+              value={minutes}
+              onChange={(e) => onMinutes(Number(e.target.value) as MetricRangeMinutes)}
+              className="min-h-11 rounded-md bg-surface-2 px-3 font-medium tracking-wide text-fg transition-[background-color,color] duration-150 ease-out hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              {METRIC_RANGES.map((r) => (
+                <option key={r.minutes} value={r.minutes}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
           </div>
         </header>
         <div className="h-72 w-full sm:h-80">
