@@ -17,12 +17,32 @@ export function CredentialsDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  async function refreshLiveError(): Promise<void> {
+    try {
+      const r = await fetch("/api/live", { cache: "no-store" });
+      const body = (await r.json()) as {
+        configured?: boolean;
+        mode?: string;
+        error?: string | null;
+      };
+      setLiveError(
+        body.configured && body.mode !== "live" && body.error
+          ? body.error
+          : null,
+      );
+    } catch {
+      /* leave the previous value alone */
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setSaved(false);
     setPassword("");
+    setLiveError(null);
     let cancelled = false;
     fetch("/api/credentials", { cache: "no-store" })
       .then((r) => r.json())
@@ -30,6 +50,7 @@ export function CredentialsDialog({
         if (cancelled) return;
         setMeta(m);
         setEmail(m.email ?? "");
+        if (m.configured) void refreshLiveError();
       })
       .catch(() => {
         if (!cancelled) setError("Could not reach the server.");
@@ -65,6 +86,29 @@ export function CredentialsDialog({
       setMeta(body);
       setPassword("");
       setSaved(true);
+      setLiveError(null);
+      // The poller signs in on its next tick (≤30s). Re-check a few times so
+      // a rejected login shows up here instead of failing silently.
+      for (let i = 0; i < 7; i++) {
+        await new Promise((r) => setTimeout(r, 5000));
+        try {
+          const lr = await fetch("/api/live", { cache: "no-store" });
+          const lb = (await lr.json()) as {
+            mode?: string;
+            error?: string | null;
+          };
+          if (lb.mode === "live") {
+            setLiveError(null);
+            break;
+          }
+          if (lb.error) {
+            setLiveError(lb.error);
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed.");
     } finally {
@@ -155,6 +199,12 @@ export function CredentialsDialog({
         </div>
 
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        {liveError ? (
+          <p className="mt-3 text-sm text-danger">
+            Generac rejected the login:{" "}
+            <span className="font-mono">{liveError}</span>
+          </p>
+        ) : null}
         {saved ? (
           <p className="mt-3 text-sm text-ok">
             Saved — the next poll will sign in with these credentials.

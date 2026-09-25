@@ -25,7 +25,8 @@ function readEnvFile(): Record<string, string> {
     const out: Record<string, string> = {};
     for (const line of raw.split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-      if (m) out[m[1]] = m[2];
+      if (!m) continue;
+      out[m[1]] = unquote(m[2]);
     }
     return out;
   } catch {
@@ -33,8 +34,26 @@ function readEnvFile(): Record<string, string> {
   }
 }
 
+/** Values are stored JSON-quoted so leading/trailing spaces, quotes,
+ *  backslashes and newlines in passwords survive the round-trip. */
+function quote(value: string): string {
+  return JSON.stringify(value);
+}
+
+function unquote(value: string): string {
+  const t = value.trim();
+  if (t.length >= 2 && t.startsWith('"')) {
+    try {
+      return JSON.parse(t) as string;
+    } catch {
+      /* fall through to raw */
+    }
+  }
+  return value.trim();
+}
+
 function writeEnvFile(vars: Record<string, string>): void {
-  const lines = Object.entries(vars).map(([k, v]) => `${k}=${v}`);
+  const lines = Object.entries(vars).map(([k, v]) => `${k}=${quote(v)}`);
   fs.writeFileSync(ENV_FILE, lines.join("\n") + "\n", "utf8");
 }
 
