@@ -11,17 +11,46 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { clockLabel, formatKwh } from "@/lib/pwrcell/format";
-import type { SeriesPoint } from "@/lib/pwrcell/types";
+import { clockLabel, formatKwh, weekdayLabel } from "@/lib/pwrcell/format";
 import { cn } from "@/lib/utils";
-import { RANGES, type RangeMinutes } from "./power-chart";
+import type { DayAggregate, HistoryRange } from "@/routes/api/history";
 
 export type MetricKey = "solar" | "home" | "battery" | "grid";
+
+/**
+ * Chart ranges for the per-metric graph pages. The short ranges read the fast
+ * in-memory live buffer (/api/series); the long ranges read the DB-backed
+ * history (/api/history), which retains one sample per minute for two years.
+ */
+export const METRIC_RANGES = [
+  { label: "30 m", minutes: 30, history: null },
+  { label: "2 h", minutes: 120, history: null },
+  { label: "12 h", minutes: 720, history: null },
+  { label: "24 h", minutes: 1440, history: "24h" },
+  { label: "7 d", minutes: 10080, history: "7d" },
+  { label: "30 d", minutes: 43200, history: "30d" },
+  { label: "1 y", minutes: 525600, history: "365d" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  minutes: number;
+  history: HistoryRange | null;
+}>;
+
+export type MetricRangeMinutes = (typeof METRIC_RANGES)[number]["minutes"];
+
+/** One plotted sample. Live points are exact; history buckets are null across gaps. */
+export type ChartPoint = {
+  ts: number;
+  solarW: number | null;
+  homeW: number | null;
+  batteryW: number | null;
+  gridW: number | null;
+};
 
 type MetricCfg = {
   label: string;
   color: string;
-  pick: (p: SeriesPoint) => number | null | undefined;
+  pick: (p: ChartPoint) => number | null | undefined;
   signed: boolean;
   negLabel: string;
   posLabel: string;
@@ -36,7 +65,7 @@ export const METRIC_CFG: Record<MetricKey, MetricCfg> = {
     signed: false,
     negLabel: "",
     posLabel: "Produced",
-    blurb: "Array output over time. Energy is integrated from the 30-second samples kept on the laptop.",
+    blurb: "Array output over time, from live samples or the two-year history store.",
   },
   home: {
     label: "Home",
@@ -45,7 +74,7 @@ export const METRIC_CFG: Record<MetricKey, MetricCfg> = {
     signed: false,
     negLabel: "",
     posLabel: "Consumed",
-    blurb: "Whole-home consumption over time, integrated from the 30-second samples.",
+    blurb: "Whole-home consumption over time, from live samples or the two-year history store.",
   },
   battery: {
     label: "Battery",
@@ -78,7 +107,11 @@ type Stats = {
   samples: number;
 };
 
-function computeStats(points: SeriesPoint[], pick: (p: SeriesPoint) => number | null | undefined): Stats {
+function computeStats(
+  points: ChartPoint[],
+  pick: (p: ChartPoint) => number | null | undefined,
+  maxGapH: number,
+): Stats {
   const vals = points
     .map((p) => pick(p))
     .filter((v): v is number => v != null && !Number.isNaN(v));
@@ -93,7 +126,7 @@ function computeStats(points: SeriesPoint[], pick: (p: SeriesPoint) => number | 
     const b = pick(points[i]!);
     if (a == null || b == null) continue;
     const dtH = (points[i]!.ts - points[i - 1]!.ts) / 3_600_000;
-    if (dtH <= 0 || dtH > 0.25) continue; // skip gaps
+    if (dtH <= 0 || dtH > maxGapH) continue; // skip gaps (outages, restarts)
     const avgW = (a + b) / 2;
     const kwh = (avgW * dtH) / 1000;
     totalKwh += kwh;
@@ -115,14 +148,18 @@ function computeStats(points: SeriesPoint[], pick: (p: SeriesPoint) => number | 
 
 type HourBucket = { ts: number; pos: number; neg: number; net: number };
 
-function hourlyBuckets(points: SeriesPoint[], pick: (p: SeriesPoint) => number | null | undefined): HourBucket[] {
+function hourlyBuckets(
+  points: ChartPoint[],
+  pick: (p: ChartPoint) => number | null | undefined,
+  maxGapH: number,
+): HourBucket[] {
   const buckets = new Map<number, { pos: number; neg: number }>();
   for (let i = 1; i < points.length; i++) {
     const a = pick(points[i - 1]!);
     const b = pick(points[i]!);
     if (a == null || b == null) continue;
     const dtH = (points[i]!.ts - points[i - 1]!.ts) / 3_600_000;
-    if (dtH <= 0 || dtH > 0.25) continue;
+    if (dtH <= 0 || dtH > maxGapH) continue;
     const hour = Math.floor(points[i]!.ts / 3_600_000) * 3_600_000;
     const avgW = (a + b) / 2;
     const kwh = (avgW * dtH) / 1000;
@@ -134,6 +171,43 @@ function hourlyBuckets(points: SeriesPoint[], pick: (p: SeriesPoint) => number |
   return [...buckets.entries()]
     .sort((x, y) => x[0] - y[0])
     .map(([ts, b]) => ({ ts, pos: b.pos, neg: b.neg, net: b.pos - b.neg }));
+}
+
+type DayBucket = { day: string; pos: number; neg: number; net: number };
+
+/** Daily energy bars from the /api/history day aggregates (used for 7d+ ranges). */
+function dailyBuckets(days: DayAggregate[], metric: MetricKey): DayBucket[] {
+  return days.map((d) => {
+    let pos = 0;
+    let neg = 0;
+    switch (metric) {
+      case "solar":
+        pos = d.solarKwh;
+        break;
+      case "home":
+        pos = d.homeKwh;
+        break;
+      case "battery":
+        pos = d.batteryDischargedKwh;
+        neg = d.batteryChargedKwh;
+        break;
+      case "grid":
+        pos = d.gridImportKwh;
+        neg = d.gridExportKwh;
+        break;
+    }
+    return { day: d.day, pos, neg, net: pos - neg };
+  });
+}
+
+/** "2026-09-25" -> "Sep 25" for daily bar ticks. */
+function shortDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function toKw(w: number | null): number | null {
@@ -162,19 +236,35 @@ function StatTile({ label, value, unit, accent }: { label: string; value: string
 export function MetricDetail({
   metric,
   points,
+  days,
+  bucketSeconds,
   timeZone,
   minutes,
   onMinutes,
 }: {
   metric: MetricKey;
-  points: SeriesPoint[];
+  points: ChartPoint[];
+  /** Day aggregates from /api/history — present for the 7d+ ranges. */
+  days?: DayAggregate[];
+  /** Sample spacing in seconds (30 for the live buffer, bucket size for history). */
+  bucketSeconds: number;
   timeZone?: string | null;
-  minutes: RangeMinutes;
-  onMinutes: (m: RangeMinutes) => void;
+  minutes: MetricRangeMinutes;
+  onMinutes: (m: MetricRangeMinutes) => void;
 }) {
   const cfg = METRIC_CFG[metric];
-  const stats = useMemo(() => computeStats(points, cfg.pick), [points, cfg]);
-  const hourly = useMemo(() => hourlyBuckets(points, cfg.pick), [points, cfg]);
+  // Gaps wider than ~2.5 buckets are outages/restarts: don't interpolate energy across them.
+  const maxGapH = Math.max(0.25, (bucketSeconds * 2.5) / 3600);
+  const stats = useMemo(() => computeStats(points, cfg.pick, maxGapH), [points, cfg, maxGapH]);
+  const useDaily = minutes > 1440 && (days?.length ?? 0) > 0;
+  const hourly = useMemo(
+    () => (useDaily ? [] : hourlyBuckets(points, cfg.pick, maxGapH)),
+    [points, cfg, maxGapH, useDaily],
+  );
+  const daily = useMemo(
+    () => (useDaily ? dailyBuckets(days ?? [], metric) : []),
+    [days, metric, useDaily],
+  );
   const chartData = useMemo(
     () =>
       points.map((p) => ({
@@ -183,6 +273,13 @@ export function MetricDetail({
       })),
     [points, cfg],
   );
+  const longRange = minutes > 1440;
+  const tickTime = (v: number) =>
+    longRange ? weekdayLabel(Number(v), timeZone) : clockLabel(Number(v), timeZone);
+  const tipTime = (ts: number) =>
+    longRange
+      ? `${weekdayLabel(ts, timeZone)}, ${clockLabel(ts, timeZone)}`
+      : clockLabel(ts, timeZone);
 
   return (
     <div className="flex flex-col gap-4">
@@ -210,7 +307,7 @@ export function MetricDetail({
             {cfg.label} power (kW)
           </h2>
           <div className="flex rounded-md bg-surface-2 p-1" role="tablist" aria-label="Chart range">
-            {RANGES.map((r) => (
+            {METRIC_RANGES.map((r) => (
               <button
                 key={r.minutes}
                 type="button"
@@ -237,7 +334,7 @@ export function MetricDetail({
                   dataKey="ts"
                   type="number"
                   domain={["dataMin", "dataMax"]}
-                  tickFormatter={(v) => clockLabel(Number(v), timeZone)}
+                  tickFormatter={tickTime}
                   tick={{ fill: "var(--color-muted)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
@@ -256,7 +353,7 @@ export function MetricDetail({
                     if (!active || !payload?.length || label == null) return null;
                     return (
                       <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
-                        <p className="mb-1 font-mono text-xs text-muted">{clockLabel(Number(label), timeZone)}</p>
+                        <p className="mb-1 font-mono text-xs text-muted">{tipTime(Number(label))}</p>
                         <p className="font-mono text-sm tabular-nums text-fg">
                           {Number(payload[0].value).toFixed(2)} kW
                         </p>
@@ -287,16 +384,24 @@ export function MetricDetail({
 
       <section className="flex flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5">
         <h2 className="mb-3 text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
-          Energy per hour (kWh)
+          {useDaily ? "Energy per day (kWh)" : "Energy per hour (kWh)"}
         </h2>
         <div className="h-56 w-full sm:h-64">
-          {hourly.length > 0 ? (
+          {(useDaily ? daily.length > 0 : hourly.length > 0) ? (
             <ResponsiveContainer width="100%" height="100%" debounce={50}>
-              <BarChart data={hourly} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} barCategoryGap="28%">
+              <BarChart
+                data={(useDaily ? daily : hourly) as Array<Record<string, number | string>>}
+                margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                barCategoryGap="28%"
+              >
                 <CartesianGrid stroke="var(--color-border)" vertical={false} />
                 <XAxis
-                  dataKey="ts"
-                  tickFormatter={(v) => clockLabel(Number(v), timeZone).replace(/:\d\d\s?/, " ")}
+                  dataKey={useDaily ? "day" : "ts"}
+                  tickFormatter={(v) =>
+                    useDaily
+                      ? shortDay(String(v))
+                      : clockLabel(Number(v), timeZone).replace(/:\d\d\s?/, " ")
+                  }
                   tick={{ fill: "var(--color-muted)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
@@ -313,11 +418,16 @@ export function MetricDetail({
                   cursor={{ fill: "var(--color-border)" }}
                   content={({ active, payload, label }: any) => {
                     if (!active || !payload?.length || label == null) return null;
-                    const row = payload[0]?.payload as HourBucket | undefined;
+                    const row = payload[0]?.payload as
+                      | (HourBucket & { day?: string })
+                      | undefined;
                     if (!row) return null;
+                    const title = useDaily
+                      ? shortDay(String(label))
+                      : clockLabel(Number(label), timeZone);
                     return (
                       <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
-                        <p className="mb-1 font-mono text-xs text-muted">{clockLabel(Number(label), timeZone)}</p>
+                        <p className="mb-1 font-mono text-xs text-muted">{title}</p>
                         {cfg.signed ? (
                           <>
                             <p className="font-mono text-sm tabular-nums text-fg">{cfg.posLabel}: {row.pos.toFixed(2)} kWh</p>
@@ -342,7 +452,9 @@ export function MetricDetail({
             </ResponsiveContainer>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted">
-              Not enough history yet — check back after an hour of polling.
+              {useDaily
+                ? "No history in this range yet — samples accumulate one per minute."
+                : "Not enough history yet — check back after an hour of polling."}
             </div>
           )}
         </div>

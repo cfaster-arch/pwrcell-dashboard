@@ -4,13 +4,20 @@ import { createServerFn } from "@tanstack/react-start";
 import type { LivePayload, SeriesPayload } from "@/lib/pwrcell/types";
 import type { DisplaySettings } from "@/lib/display-settings";
 import { backgroundStyle } from "@/lib/display-settings";
-import { MetricDetail, METRIC_CFG, type MetricKey } from "@/components/dashboard/metric-detail";
+import {
+  METRIC_RANGES,
+  MetricDetail,
+  METRIC_CFG,
+  type ChartPoint,
+  type MetricKey,
+  type MetricRangeMinutes,
+} from "@/components/dashboard/metric-detail";
+import type { DayAggregate, HistoryPoint } from "@/routes/api/history";
 import { NavMenu } from "@/components/dashboard/nav-menu";
 import {
   DisplaySettingsProvider,
   useDisplaySettings,
 } from "@/components/dashboard/display-settings-context";
-import type { RangeMinutes as ChartRange } from "@/components/dashboard/power-chart";
 
 const VALID = new Set(Object.keys(METRIC_CFG));
 
@@ -65,26 +72,45 @@ function MetricView({
 }) {
   const { settings } = useDisplaySettings();
   const [live, setLive] = useState<LivePayload>(initialLive);
-  const [series, setSeries] = useState<SeriesPayload>(initialSeries);
-  const [minutes, setMinutes] = useState<ChartRange>(720);
+  const [points, setPoints] = useState<ChartPoint[]>(initialSeries.points);
+  const [days, setDays] = useState<DayAggregate[] | undefined>(undefined);
+  const [bucketSeconds, setBucketSeconds] = useState(30);
+  const [minutes, setMinutes] = useState<MetricRangeMinutes>(720);
 
   useEffect(() => {
     let cancelled = false;
+    const historyKey = METRIC_RANGES.find((r) => r.minutes === minutes)?.history ?? null;
     async function poll() {
       try {
-        const [nextLive, nextSeries] = await Promise.all([
-          fetchJson<LivePayload>("/api/live"),
-          fetchJson<SeriesPayload>(`/api/series?minutes=${minutes}`),
-        ]);
+        const nextLive = await fetchJson<LivePayload>("/api/live");
         if (cancelled) return;
         setLive(nextLive);
-        setSeries(nextSeries);
+        if (historyKey) {
+          // Long range: DB-backed history (one sample/min, two-year retention).
+          const tz = nextLive.point?.timezone || "America/Los_Angeles";
+          const body = await fetchJson<{
+            points: HistoryPoint[];
+            days: DayAggregate[];
+            bucketSeconds: number;
+          }>(`/api/history?range=${historyKey}&tz=${encodeURIComponent(tz)}`);
+          if (cancelled) return;
+          setPoints(body.points);
+          setDays(body.days);
+          setBucketSeconds(body.bucketSeconds);
+        } else {
+          const nextSeries = await fetchJson<SeriesPayload>(`/api/series?minutes=${minutes}`);
+          if (cancelled) return;
+          setPoints(nextSeries.points);
+          setDays(undefined);
+          setBucketSeconds(30);
+        }
       } catch {
         if (!cancelled) return;
       }
     }
     void poll();
-    const id = window.setInterval(() => void poll(), 5000);
+    // History barely moves: poll it once a minute, live data every 5 seconds.
+    const id = window.setInterval(() => void poll(), historyKey ? 60_000 : 5_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
@@ -108,10 +134,12 @@ function MetricView({
         <p className="-mt-2 max-w-3xl text-sm leading-relaxed text-muted">{cfg.blurb}</p>
         <MetricDetail
           metric={metricKey}
-          points={series.points}
+          points={points}
+          days={days}
+          bucketSeconds={bucketSeconds}
           timeZone={live.point?.timezone}
           minutes={minutes}
-          onMinutes={(m: ChartRange) => setMinutes(m as ChartRange)}
+          onMinutes={setMinutes}
         />
       </div>
     </div>
