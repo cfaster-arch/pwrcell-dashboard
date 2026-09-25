@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AlertsSection } from "./alerts-panel";
 import { TouSettingsSection } from "./cost-section";
+import { useDisplaySettings } from "./display-settings-context";
 import { RingSetupSection } from "./ring-setup";
 import { SettingsPanel } from "./settings-panel";
 
@@ -26,6 +27,7 @@ const LINKS = [
 export function NavMenu({ timeZone }: { timeZone?: string | null }) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { settings } = useDisplaySettings();
 
   useEffect(() => {
     if (!open) return;
@@ -102,10 +104,18 @@ export function NavMenu({ timeZone }: { timeZone?: string | null }) {
             <SettingsPanel />
             <div className="my-5 border-t border-border" role="separator" />
             <AlertsSection timeZone={timeZone} />
-            <div className="my-5 border-t border-border" role="separator" />
-            <TouSettingsSection />
-            <div className="my-5 border-t border-border" role="separator" />
-            <RingSetupSection />
+            {settings.showRates ? (
+              <>
+                <div className="my-5 border-t border-border" role="separator" />
+                <TouSettingsSection />
+              </>
+            ) : null}
+            {settings.showCameras ? (
+              <>
+                <div className="my-5 border-t border-border" role="separator" />
+                <RingSetupSection />
+              </>
+            ) : null}
             <p className="mt-auto px-2 pt-4 text-xs leading-relaxed text-subtle">
               Wall-mounted dashboard
               <br />

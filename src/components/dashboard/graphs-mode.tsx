@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SeriesPoint } from "@/lib/pwrcell/types";
 import { CostSection } from "./cost-section";
+import { useDisplaySettings } from "./display-settings-context";
 import { METRIC_DEFS, MetricChart } from "./metric-chart";
 import { PowerChart, type RangeMinutes } from "./power-chart";
 import { HistoryRangeTabs, SocChart, type HistoryChartPoint, type HistoryRangeKey } from "./soc-chart";
@@ -24,6 +25,7 @@ export function GraphsMode({
   const [range, setRange] = useState<HistoryRangeKey>("24h");
   const [points, setPoints] = useState<HistoryChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const { settings } = useDisplaySettings();
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +75,7 @@ export function GraphsMode({
       ) : (
         <SocChart points={points} timeZone={timeZone} />
       )}
-      <CostSection timeZone={timeZone} />
+      {settings.showRates ? <CostSection timeZone={timeZone} /> : null}
     </div>
   );
 }

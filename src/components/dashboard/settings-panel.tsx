@@ -41,6 +41,49 @@ function Segmented<T extends string>({
   );
 }
 
+function Switch({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.99]"
+    >
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-fg">{label}</span>
+        {hint ? (
+          <span className="mt-0.5 block text-xs leading-snug text-subtle">{hint}</span>
+        ) : null}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200",
+          checked ? "bg-fg" : "bg-border",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-1 left-1 size-5 rounded-full bg-bg shadow transition-transform duration-200",
+            checked && "translate-x-5",
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
 export function SettingsPanel() {
   const { settings, update, uploadBackground, removeBackground } = useDisplaySettings();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -227,6 +270,25 @@ export function SettingsPanel() {
               )}
             </div>
           ) : null}
+        </div>
+      </div>
+      <div className="border-t border-border pt-4">
+        <p className="mb-3 text-kicker font-medium tracking-[0.22em] text-muted uppercase">
+          Extras
+        </p>
+        <div className="flex flex-col gap-3">
+          <Switch
+            label="Rate calculations"
+            hint="Cost estimates in Graphs view, plus the rate-plan settings below"
+            checked={settings.showRates}
+            onChange={(showRates) => void update({ showRates })}
+          />
+          <Switch
+            label="Cameras"
+            hint="Ring camera feeds on the dashboard, plus camera setup below"
+            checked={settings.showCameras}
+            onChange={(showCameras) => void update({ showCameras })}
+          />
         </div>
       </div>
     </section>

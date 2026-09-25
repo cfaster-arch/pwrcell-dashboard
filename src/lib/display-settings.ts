@@ -24,6 +24,10 @@ export interface DisplaySettings {
   nightDim: boolean;
   /** True once the first-run setup wizard has been completed. */
   setupComplete: boolean;
+  /** Show rate/cost calculations (Graphs view cost section + TOU settings). */
+  showRates: boolean;
+  /** Show the Ring camera section and its menu setup. */
+  showCameras: boolean;
 }
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
@@ -35,6 +39,8 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   hasBackgroundImage: false,
   nightDim: true,
   setupComplete: false,
+  showRates: true,
+  showCameras: true,
 };
 
 /** Inline style for the page root behind the tiles/gauges. */

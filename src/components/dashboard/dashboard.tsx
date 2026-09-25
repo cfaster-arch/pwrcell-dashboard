@@ -301,7 +301,7 @@ function DashboardView({
                 {status.detail}
                 {sampleAgeS != null && statusTone === "ok" ? ` · ${sampleAgeS}s ago` : ""}
               </p>
-              {period ? (
+              {period && settings.showRates ? (
                 <p
                   className={cn(
                     "mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-semibold",
@@ -385,7 +385,7 @@ function DashboardView({
         </section>
         )}
 
-        <CamerasSection />
+        {settings.showCameras ? <CamerasSection /> : null}
 
         <SystemPanel point={point} />
       </div>

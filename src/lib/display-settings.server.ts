@@ -50,6 +50,8 @@ function sanitize(raw: unknown): DisplaySettings {
     hasBackgroundImage: findBackgroundFile() !== null,
     nightDim: r.nightDim !== false,
     setupComplete: r.setupComplete === true,
+    showRates: r.showRates !== false,
+    showCameras: r.showCameras !== false,
   };
   if (s.backgroundMode === "image" && !s.hasBackgroundImage) s.backgroundMode = "default";
   return s;
