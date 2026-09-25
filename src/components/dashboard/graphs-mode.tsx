@@ -57,7 +57,7 @@ export function GraphsMode({
       />
       <section aria-label="History range">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+          <h2 className="eyebrow">
             History
           </h2>
           <HistoryRangeTabs range={range} onRange={setRange} label="History range" />
@@ -69,7 +69,7 @@ export function GraphsMode({
         </div>
       </section>
       {loading && points.length === 0 ? (
-        <section className="rounded-xl bg-surface p-8 text-center text-sm text-muted shadow-[var(--shadow-border)]">
+        <section className="plate p-8 text-center text-sm text-muted">
           Loading history…
         </section>
       ) : (

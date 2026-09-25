@@ -18,8 +18,8 @@ function Segmented<T extends string>({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium tracking-[0.14em] text-muted uppercase">{label}</p>
-      <div className="flex rounded-lg bg-surface-2 p-1" role="radiogroup" aria-label={label}>
+      <p className="eyebrow mb-2">{label}</p>
+      <div className="well flex p-1" role="radiogroup" aria-label={label}>
         {options.map((o) => (
           <button
             key={o.value}
@@ -28,9 +28,11 @@ function Segmented<T extends string>({
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
             className={cn(
-              "flex-1 rounded-md px-2 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out",
+              "flex-1 rounded-[0.3rem] px-2 py-2.5 text-sm font-semibold transition-all duration-150 ease-out",
               "active:scale-[0.97]",
-              value === o.value ? "bg-fg text-bg" : "text-muted hover:text-fg",
+              value === o.value
+                ? "bg-solar-dim text-solar shadow-[inset_0_1px_0_rgb(242_234_217/0.08)]"
+                : "text-muted hover:text-fg",
             )}
           >
             {o.label}
@@ -58,7 +60,7 @@ function Switch({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.99]"
+      className="well flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.99]"
     >
       <span className="min-w-0">
         <span className="block text-sm font-medium text-fg">{label}</span>
@@ -70,7 +72,7 @@ function Switch({
         aria-hidden="true"
         className={cn(
           "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200",
-          checked ? "bg-fg" : "bg-border",
+          checked ? "bg-solar" : "bg-border",
         )}
       >
         <span
@@ -113,7 +115,7 @@ export function SettingsPanel() {
   return (
     <section aria-label="Display settings" className="flex flex-col gap-4 px-2 pt-2 pb-4">
       <div className="border-t border-border pt-4">
-        <p className="mb-3 text-kicker font-medium tracking-[0.22em] text-muted uppercase">
+        <p className="mb-3 eyebrow">
           Display
         </p>
         <div className="flex flex-col gap-4">
@@ -159,7 +161,7 @@ export function SettingsPanel() {
 
           {settings.backgroundMode === "color" ? (
             <div>
-              <p className="mb-1.5 text-xs font-medium tracking-[0.14em] text-muted uppercase">
+              <p className="mb-1.5 eyebrow">
                 Background color
               </p>
               <div className="flex items-center gap-2">
@@ -204,7 +206,7 @@ export function SettingsPanel() {
 
           {settings.backgroundMode === "image" ? (
             <div>
-              <p className="mb-1.5 text-xs font-medium tracking-[0.14em] text-muted uppercase">
+              <p className="mb-1.5 eyebrow">
                 Background image
               </p>
               {settings.hasBackgroundImage ? (
@@ -273,7 +275,7 @@ export function SettingsPanel() {
         </div>
       </div>
       <div className="border-t border-border pt-4">
-        <p className="mb-3 text-kicker font-medium tracking-[0.22em] text-muted uppercase">
+        <p className="mb-3 eyebrow">
           Extras
         </p>
         <div className="flex flex-col gap-3">

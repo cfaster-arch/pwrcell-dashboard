@@ -62,14 +62,14 @@ export function NavMenu({
           role="presentation"
         >
           <nav
-            className="flex h-full w-80 max-w-[88vw] flex-col overflow-y-auto bg-surface p-4 shadow-[var(--shadow-border)]"
+            className="flex h-full w-80 max-w-[88vw] flex-col overflow-y-auto border-r border-border-strong bg-[#100d0a] shadow-[var(--shadow-plate)]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Site menu"
           >
-            <div className="flex items-center justify-between px-2 py-1">
-              <p className="text-kicker font-medium tracking-[0.22em] text-muted uppercase">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <p className="font-display text-2xl font-semibold tracking-wide text-fg">
                 PWRcell
               </p>
               <button
@@ -80,7 +80,7 @@ export function NavMenu({
                 <X className="size-5" />
               </button>
             </div>
-            <ul className="mt-3 flex flex-col gap-1">
+            <ul className="flex flex-col px-2 py-2">
               <li>
                 <button
                   type="button"
@@ -89,7 +89,7 @@ export function NavMenu({
                     onOpenLogin();
                   }}
                   aria-haspopup="dialog"
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                  className="flex w-full items-center gap-3 rounded-md border border-solar/25 bg-solar-dim px-3 py-3 text-[15px] font-semibold text-solar transition-colors hover:bg-solar/20"
                 >
                   <KeyRound className="size-5" aria-hidden="true" />
                   PWRview login
@@ -103,18 +103,23 @@ export function NavMenu({
                     ? ({ to: "/graphs/$metric", params: { metric: l.metric } }) as const
                     : ({ to: "/" }) as const;
                 return (
-                  <li key={l.label}>
+                  <li key={l.label} className="border-b border-border/50 last:border-0">
                     <Link
                       {...dest}
                       onClick={() => setOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium",
-                        active
-                          ? "bg-surface-2 text-fg"
-                          : "text-muted hover:bg-surface-2 hover:text-fg",
+                        "relative flex items-center gap-3 px-3 py-3 text-[15px] font-medium transition-colors",
+                        active ? "text-fg" : "text-muted hover:text-fg",
                       )}
                       aria-current={active ? "page" : undefined}
                     >
+                      <span
+                        className={cn(
+                          "absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-solar transition-opacity",
+                          active ? "opacity-100" : "opacity-0",
+                        )}
+                        aria-hidden="true"
+                      />
                       <l.icon className="size-5" aria-hidden="true" />
                       {l.label}
                     </Link>
@@ -122,22 +127,23 @@ export function NavMenu({
                 );
               })}
             </ul>
-            <SettingsPanel />
-            <div className="my-5 border-t border-border" role="separator" />
-            <AlertsSection timeZone={timeZone} />
+            <div className="border-t border-border px-5 pt-4">
+              <SettingsPanel />
+            </div>
+            <div className="border-t border-border px-5 pt-4">
+              <AlertsSection timeZone={timeZone} />
+            </div>
             {settings.showRates ? (
-              <>
-                <div className="my-5 border-t border-border" role="separator" />
+              <div className="border-t border-border px-5 pt-4">
                 <TouSettingsSection />
-              </>
+              </div>
             ) : null}
             {settings.showCameras ? (
-              <>
-                <div className="my-5 border-t border-border" role="separator" />
+              <div className="border-t border-border px-5 pt-4">
                 <RingSetupSection />
-              </>
+              </div>
             ) : null}
-            <p className="mt-auto px-2 pt-4 text-xs leading-relaxed text-subtle">
+            <p className="mt-auto px-5 py-4 text-xs leading-relaxed text-subtle">
               Wall-mounted dashboard
               <br />
               served from the home laptop

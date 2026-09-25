@@ -59,9 +59,9 @@ export function CostSection({ timeZone }: { timeZone?: string | null }) {
     : [];
 
   return (
-    <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5">
+    <section className="plate p-4 sm:p-5">
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+        <h2 className="eyebrow">
           Grid cost
         </h2>
         {cost && (
@@ -177,7 +177,7 @@ export function TouSettingsSection() {
 
   return (
     <section aria-label="Electricity rates">
-      <h3 className="mb-1 text-sm font-semibold tracking-wide text-fg uppercase">
+      <h3 className="mb-1 eyebrow">
         Electricity rates
       </h3>
       <p className="mb-3 text-xs text-muted">{draft.label}</p>

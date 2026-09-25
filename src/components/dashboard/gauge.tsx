@@ -220,10 +220,10 @@ export function Gauge({
         y="141"
         textAnchor="end"
         dominantBaseline="central"
-        fontSize="16.5"
+        fontSize="19"
+        fontWeight="600"
         fill="var(--gauge-well-text)"
-        className="font-mono"
-        style={{ fontVariantNumeric: "tabular-nums" }}
+        className="font-display"
       >
         {display}
       </text>
@@ -243,9 +243,10 @@ export function Gauge({
           x="110"
           y="164"
           textAnchor="middle"
-          fontSize="10.5"
-          className="font-mono"
-          style={{ fontVariantNumeric: "tabular-nums", fill: accent }}
+          fontSize="12"
+          fontWeight="600"
+          className="font-display"
+          style={{ fill: accent }}
         >
           {Math.round(socPct)}% SoC
         </text>

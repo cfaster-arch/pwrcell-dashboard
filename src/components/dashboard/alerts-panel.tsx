@@ -145,7 +145,7 @@ export function AlertsSection({ timeZone }: { timeZone?: string | null }) {
 
   return (
     <section aria-label="Alerts">
-      <h3 className="mb-3 text-sm font-semibold tracking-wide text-fg uppercase">Alerts</h3>
+      <h3 className="mb-3 eyebrow">Alerts</h3>
       {!settings ? (
         <p className="text-sm text-muted">Loading alert settings…</p>
       ) : (
@@ -219,7 +219,7 @@ export function AlertsSection({ timeZone }: { timeZone?: string | null }) {
           </div>
 
           <div>
-            <h4 className="mb-2 text-xs font-semibold tracking-widest text-muted uppercase">
+            <h4 className="mb-2 eyebrow">
               Recent alerts
             </h4>
             {history.length === 0 ? (

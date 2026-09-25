@@ -142,7 +142,7 @@ export function CredentialsDialog({
       role="presentation"
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-[var(--shadow-border)]"
+        className="plate w-full max-w-sm p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

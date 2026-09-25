@@ -79,7 +79,7 @@ export function CamerasSection() {
   return (
     <section aria-label="Cameras" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-kicker font-medium tracking-[0.22em] text-muted uppercase">
+        <h2 className="flex items-center gap-2 eyebrow">
           <Video className="size-4" aria-hidden="true" />
           Cameras
         </h2>
@@ -98,7 +98,7 @@ export function CamerasSection() {
                 aria-pressed={view === o.value}
                 className={cn(
                   "max-w-36 truncate px-4 py-2 text-sm font-medium transition-colors",
-                  view === o.value ? "bg-fg text-bg" : "text-muted hover:text-fg",
+                  view === o.value ? "bg-solar-dim text-solar" : "text-muted hover:text-fg",
                 )}
               >
                 {o.label}

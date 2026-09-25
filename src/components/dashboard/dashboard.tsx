@@ -245,24 +245,26 @@ function DashboardView({
     >
       <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-5">
         <header className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex items-start gap-1">
-            <div className="-ml-2.5 mt-0.5">
+          <div className="flex items-start gap-3">
+            <div className="-ml-2 mt-1">
               <NavMenu timeZone={tz} onOpenLogin={() => setCredsOpen(true)} />
             </div>
             <div>
-              <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight text-fg sm:text-3xl">
-              {point?.address ?? "Energy dashboard"}
-            </h1>
-            <p className="mt-1 text-sm text-muted">
-              {mode}
-              {point?.gridState ? ` · ${prettyMode(point.gridState.replace(/^GRID_/, ""))}` : ""}
-            </p>
+              <p className="font-display text-[1.7rem] leading-none font-semibold tracking-wide text-fg">
+                PWRcell
+              </p>
+              <h1 className="mt-1 text-lg font-medium text-muted">
+                {point?.address ?? "Energy dashboard"}
+              </h1>
+              <p className="mt-0.5 text-sm text-subtle">
+                {mode}
+                {point?.gridState ? ` · ${prettyMode(point.gridState.replace(/^GRID_/, ""))}` : ""}
+              </p>
             </div>
           </div>
           <div className="flex items-end gap-5">
             <div className="text-right">
-              <p className="font-mono text-3xl leading-none font-medium tracking-tight tabular-nums sm:text-4xl" suppressHydrationWarning>
+              <p className="font-display text-5xl leading-none font-semibold tabular-nums" suppressHydrationWarning>
                 {clockLabel(clockTs, tz)}
               </p>
               <p className="mt-1 text-sm text-muted" suppressHydrationWarning>
@@ -271,7 +273,7 @@ function DashboardView({
             </div>
             <div
               className={cn(
-                "min-w-28 rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]",
+                "plate min-w-28 px-3 py-2",
                 staleDanger && "animate-pulse border border-danger",
               )}
               role="status"

@@ -38,7 +38,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length || label == null) return null;
   return (
-    <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
+    <div className="well px-3 py-2">
       <p className="mb-1 font-mono text-xs text-muted">{clockLabel(label, timeZone)}</p>
       <ul className="space-y-0.5">
         {payload.map((row) => (
@@ -79,12 +79,12 @@ export function PowerChart({
   );
 
   return (
-    <section className="flex flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5">
+    <section className="flex flex-col plate p-4 sm:p-5">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+        <h2 className="eyebrow">
           Production vs load
         </h2>
-        <div className="flex rounded-md bg-surface-2 p-1" role="tablist" aria-label="Chart range">
+        <div className="well flex p-1" role="tablist" aria-label="Chart range">
           {RANGES.map((r) => (
             <button
               key={r.minutes}
@@ -93,9 +93,9 @@ export function PowerChart({
               aria-selected={minutes === r.minutes}
               onClick={() => onRange(r.minutes)}
               className={cn(
-                "min-h-11 min-w-16 rounded-sm px-3 font-medium tracking-wide transition-[background-color,color,transform] duration-150 ease-out",
+                "font-display min-h-11 min-w-16 rounded-[0.3rem] px-3 text-[1.05rem] font-semibold tracking-wide transition-all duration-150 ease-out",
                 "active:scale-[0.96]",
-                minutes === r.minutes ? "bg-fg text-bg" : "text-muted hover:text-fg",
+                minutes === r.minutes ? "bg-solar-dim text-solar" : "text-muted hover:text-fg",
               )}
             >
               {r.label}

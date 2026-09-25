@@ -38,7 +38,7 @@ function MetricTooltip({
 }) {
   if (!active || !payload?.length || label == null) return null;
   return (
-    <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
+    <div className="well px-3 py-2">
       <p className="mb-1 font-mono text-xs text-muted">{clockLabel(label, timeZone)}</p>
       <p className="flex items-center gap-2 font-mono text-sm tabular-nums text-fg">
         <span className="size-2 rounded-full" style={{ background: color }} />
@@ -70,9 +70,9 @@ export function MetricChart({
   );
 
   return (
-    <section className="flex flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+    <section className="flex flex-col plate p-4">
       <header className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+        <h3 className="eyebrow">
           {metric.label}
         </h3>
         <span className="size-2.5 rounded-full" style={{ background: metric.color }} />

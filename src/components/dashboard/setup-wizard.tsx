@@ -29,7 +29,7 @@ export function SetupWizard({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="First-time setup">
       <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl">
-        <p className="text-kicker tracking-[0.22em] text-muted uppercase">First-time setup</p>
+        <p className="eyebrow">First-time setup</p>
         <h2 className="mt-1 text-xl font-medium tracking-tight">
           {["Connect PWRview", "Rate plan", "Cameras", "Display mode"][step]}
         </h2>

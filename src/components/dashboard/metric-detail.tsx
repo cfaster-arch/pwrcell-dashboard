@@ -222,11 +222,11 @@ function fmtSignedKw(w: number | null): string {
 
 function StatTile({ label, value, unit, accent }: { label: string; value: string; unit?: string; accent?: string }) {
   return (
-    <div className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
-      <p className="text-xs font-medium tracking-[0.14em] text-muted uppercase">{label}</p>
-      <p className="mt-2 font-mono text-2xl font-medium tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
+    <div className="plate p-4">
+      <p className="eyebrow">{label}</p>
+      <p className="font-display mt-2 text-[1.9rem] leading-none font-semibold tabular-nums" style={accent ? { color: accent } : undefined}>
         {value}
-        {unit ? <span className="ml-1 text-sm font-normal text-muted">{unit}</span> : null}
+        {unit ? <span className="ml-1 font-sans text-sm font-normal text-muted">{unit}</span> : null}
       </p>
     </div>
   );
@@ -300,9 +300,9 @@ export function MetricDetail({
         )}
       </section>
 
-      <section className="flex flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5">
+      <section className="flex flex-col plate p-4 sm:p-5">
         <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+          <h2 className="eyebrow">
             {cfg.label} power (kW)
           </h2>
           <div>
@@ -313,7 +313,7 @@ export function MetricDetail({
               id="chart-range"
               value={minutes}
               onChange={(e) => onMinutes(Number(e.target.value) as MetricRangeMinutes)}
-              className="min-h-11 rounded-md bg-surface-2 px-3 font-medium tracking-wide text-fg transition-[background-color,color] duration-150 ease-out hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              className="well font-display min-h-11 px-3 text-[1.05rem] font-semibold tracking-wide text-fg"
             >
               {METRIC_RANGES.map((r) => (
                 <option key={r.minutes} value={r.minutes}>
@@ -350,7 +350,7 @@ export function MetricDetail({
                   content={({ active, payload, label }: any) => {
                     if (!active || !payload?.length || label == null) return null;
                     return (
-                      <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
+                      <div className="well px-3 py-2">
                         <p className="mb-1 font-mono text-xs text-muted">{tipTime(Number(label))}</p>
                         <p className="font-mono text-sm tabular-nums text-fg">
                           {Number(payload[0].value).toFixed(2)} kW
@@ -380,8 +380,8 @@ export function MetricDetail({
         </div>
       </section>
 
-      <section className="flex flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5">
-        <h2 className="mb-3 text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+      <section className="flex flex-col plate p-4 sm:p-5">
+        <h2 className="mb-3 eyebrow">
           {useDaily ? "Energy per day (kWh)" : "Energy per hour (kWh)"}
         </h2>
         <div className="h-56 w-full sm:h-64">
@@ -424,7 +424,7 @@ export function MetricDetail({
                       ? shortDay(String(label))
                       : clockLabel(Number(label), timeZone);
                     return (
-                      <div className="rounded-md bg-surface-2 px-3 py-2 shadow-[var(--shadow-border)]">
+                      <div className="well px-3 py-2">
                         <p className="mb-1 font-mono text-xs text-muted">{title}</p>
                         {cfg.signed ? (
                           <>

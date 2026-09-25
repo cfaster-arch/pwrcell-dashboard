@@ -1,82 +1,119 @@
+@import "@fontsource/barlow-condensed/500.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/700.css";
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0b0d0c;
-  --color-surface: #141816;
-  --color-surface-2: #1c211e;
-  --color-fg: #e8ede9;
-  --color-muted: #8b958e;
-  --color-subtle: #6a736e;
-  --color-border: rgb(232 237 233 / 0.1);
-  --color-border-strong: rgb(232 237 233 / 0.18);
-  --color-solar: #e0a04a;
-  --color-solar-dim: rgb(224 160 74 / 0.16);
-  --color-home: #e8ede9;
-  --color-home-dim: rgb(232 237 233 / 0.1);
-  --color-battery: #3aae9a;
-  --color-battery-dim: rgb(58 174 154 / 0.16);
-  --color-grid: #6d93c2;
-  --color-grid-dim: rgb(109 147 194 / 0.16);
-  --color-danger: #d4675a;
-  --color-ok: #5dba7a;
-  --color-warn: #d4a056;
-  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --text-hero: clamp(2.6rem, 7.2vw, 4.4rem);
-  --text-tile-label: clamp(0.72rem, 1.1vw, 0.92rem);
-  --text-kicker: 0.68rem;
+  /* Warm instrument-panel dark theme */
+  --color-bg: #0e0b08;
+  --color-surface: #171310;
+  --color-surface-2: #1f1914;
+  --color-well: #0a0806;
+  --color-fg: #f2ead9;
+  --color-muted: #a89b85;
+  --color-subtle: #6e6355;
+  --color-border: rgb(242 234 217 / 0.09);
+  --color-border-strong: rgb(242 234 217 / 0.17);
+  --color-solar: #f0a63c;
+  --color-solar-deep: #b97a1e;
+  --color-solar-dim: rgb(240 166 60 / 0.14);
+  --color-home: #f2ead9;
+  --color-home-dim: rgb(242 234 217 / 0.09);
+  --color-battery: #43c39f;
+  --color-battery-deep: #1f8a6c;
+  --color-battery-dim: rgb(67 195 159 / 0.13);
+  --color-grid: #7ba7dc;
+  --color-grid-deep: #3f6ea8;
+  --color-grid-dim: rgb(123 167 220 / 0.13);
+  --color-danger: #e0684e;
+  --color-ok: #62c07e;
+  --color-warn: #e0a83c;
+
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-sans: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-hero: clamp(3rem, 8vw, 5rem);
+  --text-tile-label: 0.95rem;
+  --text-kicker: 0.72rem;
+
   --radius-xs: 0.25rem;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --shadow-border: 0 0 0 1px rgb(232 237 233 / 0.08);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+
+  /* Plates: hairline border + faint top light, no glow */
+  --shadow-plate:
+    inset 0 1px 0 rgb(242 234 217 / 0.07),
+    0 1px 2px rgb(0 0 0 / 0.45),
+    0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-well:
+    inset 0 2px 8px rgb(0 0 0 / 0.55),
+    inset 0 -1px 0 rgb(242 234 217 / 0.04);
+  --shadow-border: 0 0 0 1px rgb(242 234 217 / 0.08);
 }
 
 :root {
-  --gauge-tick: #e8ede9;
-  --gauge-label: #8b958e;
-  --gauge-track: rgb(232 237 233 / 0.14);
-  --gauge-hub: #1c211e;
-  --gauge-well: #161a18;
-  --gauge-well-border: rgb(232 237 233 / 0.12);
-  --gauge-well-text: #e8ede9;
+  --gauge-tick: #f2ead9;
+  --gauge-label: #a89b85;
+  --gauge-track: rgb(242 234 217 / 0.13);
+  --gauge-hub: #1f1914;
+  --gauge-well: #0a0806;
+  --gauge-well-border: rgb(242 234 217 / 0.12);
+  --gauge-well-text: #f2ead9;
 }
 
 [data-theme="light"] {
-  --color-bg: #edf0ed;
-  --color-surface: #ffffff;
-  --color-surface-2: #e2e8e2;
-  --color-fg: #141816;
-  --color-muted: #5d665f;
-  --color-subtle: #8b958e;
-  --color-border: rgb(20 24 22 / 0.1);
-  --color-border-strong: rgb(20 24 22 / 0.2);
-  --color-solar: #b87a1f;
-  --color-solar-dim: rgb(184 122 31 / 0.16);
-  --color-home: #3a443d;
-  --color-home-dim: rgb(58 68 61 / 0.12);
-  --color-battery: #1e8a76;
-  --color-battery-dim: rgb(30 138 118 / 0.16);
-  --color-grid: #3d6ca8;
-  --color-grid-dim: rgb(61 108 168 / 0.16);
+  --color-bg: #f3efe4;
+  --color-surface: #faf7ee;
+  --color-surface-2: #e7e0cf;
+  --color-well: #e2dac6;
+  --color-fg: #1c1611;
+  --color-muted: #6b5f4d;
+  --color-subtle: #97887a;
+  --color-border: rgb(28 22 17 / 0.1);
+  --color-border-strong: rgb(28 22 17 / 0.2);
+  --color-solar: #b97a1e;
+  --color-solar-deep: #8a5a12;
+  --color-solar-dim: rgb(185 122 30 / 0.14);
+  --color-home: #3a3226;
+  --color-home-dim: rgb(58 50 38 / 0.1);
+  --color-battery: #1f8a6c;
+  --color-battery-deep: #146047;
+  --color-battery-dim: rgb(31 138 108 / 0.13);
+  --color-grid: #3f6ea8;
+  --color-grid-deep: #2c4f7c;
+  --color-grid-dim: rgb(63 110 168 / 0.13);
   --color-danger: #b84a3e;
   --color-ok: #2f8a52;
-  --color-warn: #b87a1f;
-  --shadow-border: 0 0 0 1px rgb(20 24 22 / 0.08);
-  --gauge-tick: #141816;
-  --gauge-label: #5d665f;
-  --gauge-track: rgb(20 24 22 / 0.14);
-  --gauge-hub: #dde4df;
-  --gauge-well: #101413;
-  --gauge-well-border: rgb(232 237 233 / 0.14);
-  --gauge-well-text: #e8ede9;
+  --color-warn: #b97a1e;
+  --shadow-plate:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 1px 2px rgb(28 22 17 / 0.08),
+    0 10px 28px -14px rgb(28 22 17 / 0.25);
+  --shadow-well:
+    inset 0 2px 6px rgb(28 22 17 / 0.12),
+    inset 0 -1px 0 rgb(255 255 255 / 0.5);
+  --shadow-border: 0 0 0 1px rgb(28 22 17 / 0.09);
+  --gauge-tick: #1c1611;
+  --gauge-label: #6b5f4d;
+  --gauge-track: rgb(28 22 17 / 0.13);
+  --gauge-hub: #e7e0cf;
+  --gauge-well: #14100c;
+  --gauge-well-border: rgb(242 234 217 / 0.16);
+  --gauge-well-text: #f2ead9;
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   html,
@@ -90,6 +127,32 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
+    background-image:
+      radial-gradient(130% 70% at 50% -10%, rgb(240 166 60 / 0.055), transparent 55%),
+      radial-gradient(120% 90% at 50% 115%, rgb(0 0 0 / 0.5), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  [data-theme="light"] body {
+    background-image:
+      radial-gradient(130% 70% at 50% -10%, rgb(255 255 255 / 0.6), transparent 55%),
+      radial-gradient(120% 90% at 50% 115%, rgb(28 22 17 / 0.08), transparent 55%);
+  }
+
+  /* Film grain over everything: the hand-finished touch. Static, cheap. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 160px 160px;
+  }
+
+  [data-theme="light"] body::after {
+    opacity: 0.035;
   }
 
   button:not(:disabled),
@@ -97,11 +160,82 @@
     cursor: pointer;
   }
 
+  ::selection {
+    background: rgb(240 166 60 / 0.35);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-solar);
+    outline-offset: 2px;
+  }
+
   h1,
   h2,
   h3 {
     text-wrap: balance;
   }
+
+  /* Condensed display type: the instrument voice */
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: 0.01em;
+  }
+}
+
+@utility plate {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-plate);
+}
+
+@utility well {
+  background: var(--color-well);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-well);
+}
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-2);
+  color: var(--color-fg);
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow:
+    inset 0 1px 0 rgb(242 234 217 / 0.08),
+    0 1px 2px rgb(0 0 0 / 0.4);
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.btn:hover {
+  background: color-mix(in srgb, var(--color-surface-2) 70%, var(--color-fg));
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

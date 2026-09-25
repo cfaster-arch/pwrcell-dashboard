@@ -34,32 +34,34 @@ export function ClassicTile({
   const customBackdrop = settings.backgroundMode !== "default";
   return (
     <article
-      className="relative flex min-h-40 flex-col overflow-hidden rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5"
+      className="plate relative flex min-h-40 flex-col overflow-hidden p-4 sm:p-5"
       style={tileSurfaceStyle(customBackdrop)}
     >
-      <span
-        className="absolute top-0 bottom-0 left-0 w-1"
-        style={{ background: RAIL[tone] }}
-        aria-hidden="true"
-      />
-      <header className="flex items-center justify-between pl-2">
-        <p className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">{label}</p>
+      <header className="flex items-center justify-between">
+        <p className="flex items-center gap-2 text-[0.95rem] font-medium text-muted">
+          <span
+            className="size-2 rounded-full"
+            style={{ background: RAIL[tone], boxShadow: `0 0 8px ${RAIL[tone]}` }}
+            aria-hidden="true"
+          />
+          {label}
+        </p>
         <span className="flex size-6 items-center justify-center" aria-hidden="true">
           {icon}
         </span>
       </header>
-      <div className="mt-3 flex items-end gap-2 pl-2">
+      <div className="mt-3 flex items-end gap-2">
         <p
-          className="font-mono text-hero leading-none font-medium tracking-tight tabular-nums"
+          className="font-display text-hero leading-none font-semibold tabular-nums"
           style={{ color: RAIL[tone] }}
         >
           {formatKw(watts)}
         </p>
-        <span className="mb-1 font-mono text-sm text-muted">kW</span>
+        <span className="mb-2 text-sm font-medium text-muted">kW</span>
       </div>
-      <p className="mt-3 pl-2 text-sm font-medium text-fg/80">{caption}</p>
+      <p className="mt-3 text-sm font-medium text-fg/80">{caption}</p>
       {socPct != null ? (
-        <div className="mt-auto pt-4 pl-2">
+        <div className="mt-auto pt-4">
           <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
             <span>Charge</span>
             <span className="font-mono text-fg tabular-nums">{Math.round(socPct)}%</span>

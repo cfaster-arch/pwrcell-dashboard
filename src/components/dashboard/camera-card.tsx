@@ -374,7 +374,7 @@ export function CameraCard({
                 className={cn(
                   "px-3.5 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-fg text-bg"
+                    ? "bg-solar-dim text-solar"
                     : "text-muted hover:text-fg",
                 )}
               >
@@ -401,7 +401,7 @@ export function CameraCard({
                   className={cn(
                     "px-3 py-1.5 text-xs font-medium transition-colors",
                     slot.intervalSec === iv.value
-                      ? "bg-fg text-bg"
+                      ? "bg-solar-dim text-solar"
                       : "text-muted hover:text-fg",
                   )}
                 >

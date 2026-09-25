@@ -50,14 +50,15 @@ function FlowNode({
   return (
     <div
       className={cn(
-        "flex min-h-20 flex-col items-center justify-center rounded-lg px-3 py-2",
+        "flex min-h-20 flex-col items-center justify-center rounded-lg border border-border px-3 py-2",
         wash,
       )}
+      style={{ boxShadow: "var(--shadow-plate)" }}
     >
       <Icon className={cn("size-4", color)} aria-hidden="true" />
-      <p className="mt-1 text-[10px] tracking-[0.16em] text-muted uppercase">{label}</p>
-      <p className={cn("font-mono text-lg font-medium tabular-nums", color)}>{value}</p>
-      <p className="text-[11px] text-subtle">{caption}</p>
+      <p className="font-display mt-1 text-[0.8rem] font-semibold tracking-[0.12em] text-muted uppercase">{label}</p>
+      <p className={cn("font-display text-[1.35rem] leading-none font-semibold tabular-nums", color)}>{value}</p>
+      <p className="mt-0.5 text-[11px] text-subtle">{caption}</p>
     </div>
   );
 }
@@ -122,12 +123,12 @@ export function PowerFlow({ point, className }: { point: PowerPoint | null; clas
   return (
     <section
       className={cn(
-        "flex min-h-64 flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5",
+        "flex min-h-64 flex-col plate p-4 sm:p-5",
         className,
       )}
     >
       <header className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+        <h2 className="eyebrow">
           Power flow
         </h2>
         <p className="text-xs tracking-wide text-subtle">Live path of watts</p>

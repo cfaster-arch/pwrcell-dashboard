@@ -45,13 +45,6 @@ function zonesFor(
   }
 }
 
-const RAIL = {
-  solar: "bg-solar",
-  home: "bg-home",
-  battery: "bg-battery",
-  grid: "bg-grid",
-} as const;
-
 const WASH = {
   solar: "bg-solar-dim text-solar",
   home: "bg-home-dim text-home",
@@ -85,21 +78,25 @@ export function PowerTile({
   return (
     <article
       className={cn(
-        "relative flex min-h-36 flex-col overflow-hidden rounded-xl p-4 shadow-[var(--shadow-border)]",
-        "bg-surface sm:min-h-40 sm:p-5",
+        "plate relative flex min-h-36 flex-col overflow-hidden p-4",
+        "sm:min-h-40 sm:p-5",
       )}
       style={tileSurfaceStyle(customBackdrop)}
     >
-      <span className={cn("absolute inset-y-0 left-0 w-1", RAIL[tone])} aria-hidden="true" />
-      <header className="flex items-center justify-between gap-3 pl-2">
-        <p className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+      <header className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-[0.95rem] font-medium text-muted">
+          <span
+            className="size-2 rounded-full"
+            style={{ background: ACCENT[tone], boxShadow: `0 0 8px ${ACCENT[tone]}` }}
+            aria-hidden="true"
+          />
           {label}
         </p>
         <span className={cn("size-9 rounded-md p-2", WASH[tone])} aria-hidden="true">
           {icon}
         </span>
       </header>
-      <div className="mt-1 px-1">
+      <div className="mt-1">
         <Gauge
           id={`gauge-${tone}`}
           valueW={watts}
@@ -112,7 +109,7 @@ export function PowerTile({
           ariaLabel={`${label}: ${display} kilowatts, ${caption}`}
         />
       </div>
-      <p className="mt-1 pl-2 text-sm font-medium tracking-wide text-fg/80">{caption}</p>
+      <p className="mt-1 text-sm font-medium tracking-wide text-fg/80">{caption}</p>
     </article>
   );
 }
