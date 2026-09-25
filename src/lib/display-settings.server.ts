@@ -48,6 +48,8 @@ function sanitize(raw: unknown): DisplaySettings {
     backgroundMode,
     backgroundColor,
     hasBackgroundImage: findBackgroundFile() !== null,
+    nightDim: r.nightDim !== false,
+    setupComplete: r.setupComplete === true,
   };
   if (s.backgroundMode === "image" && !s.hasBackgroundImage) s.backgroundMode = "default";
   return s;

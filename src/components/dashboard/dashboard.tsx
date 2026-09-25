@@ -9,12 +9,16 @@ import {
 } from "@/lib/pwrcell/format";
 import type { LivePayload, SeriesPayload, SeriesPoint } from "@/lib/pwrcell/types";
 import type { DisplayMode, DisplaySettings } from "@/lib/display-settings";
+import type { TouSettings } from "@/lib/tou-types";
+import { describeRatePeriod, isNightHour } from "@/lib/tou-period";
 import { backgroundStyle } from "@/lib/display-settings";
 import { cn } from "@/lib/utils";
 import { AlertBanner } from "./alerts-panel";
 import { CamerasSection } from "./cameras-section";
 import { CredentialsDialog } from "./credentials-dialog";
 import { ClassicTile } from "./classic-tile";
+import { OutageBanner, formatBackupTime, isGridOutage } from "./outage-banner";
+import { SetupWizard } from "./setup-wizard";
 import {
   DisplaySettingsProvider,
   useDisplaySettings,
@@ -158,6 +162,21 @@ function DashboardView({
   const [now, setNow] = useState<number | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [credsOpen, setCredsOpen] = useState(false);
+  const [tou, setTou] = useState<TouSettings | null>(null);
+
+  // Rate plan for the period pill + setup wizard (fetched once).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/tou", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (!cancelled && b?.settings) setTou(b.settings as TouSettings);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setNow(Date.now());
@@ -198,16 +217,32 @@ function DashboardView({
   const mode = prettyMode(point?.sysMode);
   const clockTs = now ?? point?.ts ?? Date.now();
 
+  // Stale-data watchdog: ticking age of the last sample; danger past 5 min.
+  const sampleAgeS =
+    now != null && point?.ts ? Math.max(0, Math.round((now - point.ts) / 1000)) : null;
+  const staleDanger = sampleAgeS != null && sampleAgeS > 300;
+  const statusTone = staleDanger ? "danger" : status.tone;
+
+  // Rate period pill from the configured TOU plan.
+  const period = tou ? describeRatePeriod(tou, clockTs, tz) : null;
+  // Night dim for the wall tablet (22:00–06:00 local).
+  const { settings } = useDisplaySettings();
+  const dimmed = settings.nightDim && isNightHour(clockTs, tz);
+  // Battery time-remaining, from the inverter's own estimate when available.
+  const backupLabel = formatBackupTime(point?.batteryBackupSeconds);
+  const outage = isGridOutage(point);
+
   // Gauge full-scales adapt to the recent peaks in the series buffer.
   const solarMax = scaleMax(series.points, (p) => p.solarW, 6000);
   const homeMax = scaleMax(series.points, (p) => p.homeW, 6000);
   const batteryMax = scaleMax(series.points, (p) => p.batteryW, 4000);
   const gridMax = scaleMax(series.points, (p) => p.gridW, 8000);
 
-  const { settings } = useDisplaySettings();
-
   return (
-    <div className="min-h-dvh bg-bg text-fg" style={backgroundStyle(settings)}>
+    <div
+      className="min-h-dvh bg-bg text-fg"
+      style={{ ...backgroundStyle(settings), ...(dimmed ? { filter: "brightness(0.55) saturate(0.85)" } : null) }}
+    >
       <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-5">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-start gap-1">
@@ -243,7 +278,10 @@ function DashboardView({
               </p>
             </div>
             <div
-              className="min-w-28 rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]"
+              className={cn(
+                "min-w-28 rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]",
+                staleDanger && "animate-pulse border border-danger",
+              )}
               role="status"
               aria-live="polite"
             >
@@ -251,20 +289,36 @@ function DashboardView({
                 <span
                   className={cn(
                     "size-2 rounded-full status-dot",
-                    status.tone === "ok" && "bg-ok",
-                    status.tone === "warn" && "bg-warn",
-                    status.tone === "danger" && "bg-danger",
-                    status.tone === "muted" && "bg-muted",
+                    statusTone === "ok" && "bg-ok",
+                    statusTone === "warn" && "bg-warn",
+                    statusTone === "danger" && "bg-danger",
+                    statusTone === "muted" && "bg-muted",
                   )}
                 />
                 {status.label}
               </p>
-              <p className="mt-1 max-w-52 text-xs leading-snug text-subtle">{status.detail}</p>
+              <p className="mt-1 max-w-52 text-xs leading-snug text-subtle">
+                {status.detail}
+                {sampleAgeS != null && statusTone === "ok" ? ` · ${sampleAgeS}s ago` : ""}
+              </p>
+              {period ? (
+                <p
+                  className={cn(
+                    "mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-semibold",
+                    period.peak ? "bg-danger/20 text-danger" : "bg-ok/15 text-ok",
+                  )}
+                  title={period.detail}
+                >
+                  {period.label}
+                </p>
+              ) : null}
             </div>
           </div>
         </header>
 
         <AlertBanner timeZone={tz} />
+
+        <OutageBanner point={point} />
 
         {settings.displayMode === "graphs" ? (
           <GraphsMode
@@ -305,7 +359,9 @@ function DashboardView({
               battDir === "charging"
                 ? "Charging"
                 : battDir === "discharging"
-                  ? "Discharging"
+                  ? backupLabel
+                    ? `Discharging · ≈${backupLabel} left`
+                    : "Discharging"
                   : "Idle"
             }
             icon={<BatteryCharging className="size-full" />}
@@ -334,6 +390,11 @@ function DashboardView({
         <SystemPanel point={point} />
       </div>
       <CredentialsDialog open={credsOpen} onClose={() => setCredsOpen(false)} />
+      <SetupWizard
+        pwrviewConfigured={live.configured}
+        touLabel={tou?.label ?? null}
+        onOpenLogin={() => setCredsOpen(true)}
+      />
     </div>
   );
 }

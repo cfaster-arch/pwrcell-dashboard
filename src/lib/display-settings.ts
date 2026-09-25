@@ -20,6 +20,10 @@ export interface DisplaySettings {
   backgroundColor: string;
   /** True when a custom background image has been uploaded. */
   hasBackgroundImage: boolean;
+  /** Auto-dim the display late at night (22:00–06:00 local). */
+  nightDim: boolean;
+  /** True once the first-run setup wizard has been completed. */
+  setupComplete: boolean;
 }
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
@@ -29,6 +33,8 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   backgroundMode: "default",
   backgroundColor: "#1a2f24",
   hasBackgroundImage: false,
+  nightDim: true,
+  setupComplete: false,
 };
 
 /** Inline style for the page root behind the tiles/gauges. */

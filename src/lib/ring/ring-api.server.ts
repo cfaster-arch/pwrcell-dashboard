@@ -141,7 +141,22 @@ export interface RingStatus {
   bridge: { running: boolean; streams: string[] };
 }
 
+// After a VPS reboot the app process is fresh but go2rtc isn't running.
+// The first status check re-syncs the bridge so cameras recover on their
+// own instead of waiting for someone to touch a setting.
+let bridgeInitDone = false;
+async function ensureBridgeInit(): Promise<void> {
+  if (bridgeInitDone) return;
+  bridgeInitDone = true;
+  try {
+    await syncBridge();
+  } catch {
+    /* bridge stays down; the UI shows it and the next settings change retries */
+  }
+}
+
 export async function ringStatus(): Promise<RingStatus> {
+  await ensureBridgeInit();
   const running = bridgeRunning();
   const raw = running ? await bridgeStreams() : null;
   return {

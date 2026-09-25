@@ -30,15 +30,17 @@ function LiveView({ src, name }: { src: string; name: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [state, setState] = useState<StreamState>("idle");
   const [detail, setDetail] = useState<string | null>(null);
-  const [micReady, setMicReady] = useState(false);
   const [talking, setTalking] = useState(false);
+  const [micFailed, setMicFailed] = useState(false);
   const pttRef = useRef<(on: boolean) => void>(() => {});
   const restartRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
     let pc: RTCPeerConnection | null = null;
-    let mic: MediaStreamTrack | null = null;
+    let micPc: RTCPeerConnection | null = null;
+    let micTrack: MediaStreamTrack | null = null;
+    let micDenied = false;
     let attempts = 0;
     let dropTimer = 0;
     let retryTimer = 0;
@@ -52,10 +54,50 @@ function LiveView({ src, name }: { src: string; name: string }) {
         /* noop */
       }
       pc = null;
-      mic?.stop();
-      mic = null;
-      setMicReady(false);
       setTalking(false);
+    };
+
+    // Microphone is requested only on the first push-to-talk press, never
+    // when live view opens. It rides a second, audio-only uplink so the
+    // video connection never needs renegotiation.
+    const ensureMic = async (): Promise<MediaStreamTrack | null> => {
+      if (micTrack) return micTrack;
+      if (micDenied) return null;
+      try {
+        const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) {
+          ms.getTracks().forEach((t) => t.stop());
+          return null;
+        }
+        const track = ms.getAudioTracks()[0] ?? null;
+        if (!track) return null;
+        track.enabled = false;
+        const mpc = new RTCPeerConnection();
+        micPc = mpc;
+        mpc.addTrack(track, ms);
+        const offer = await mpc.createOffer();
+        await mpc.setLocalDescription(offer);
+        const res = await fetch(
+          `/api/rtc/api/webrtc?src=${encodeURIComponent(src)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/sdp" },
+            body: offer.sdp ?? "",
+            cache: "no-store",
+          },
+        );
+        if (!res.ok) throw new Error(`mic uplink answered ${res.status}`);
+        await mpc.setRemoteDescription({
+          type: "answer",
+          sdp: await res.text(),
+        });
+        micTrack = track;
+        return track;
+      } catch {
+        micDenied = true;
+        setMicFailed(true);
+        return null;
+      }
     };
 
     const scheduleRetry = (why: string) => {
@@ -87,30 +129,9 @@ function LiveView({ src, name }: { src: string; name: string }) {
             attempts = 0;
           }
         };
-        // Microphone for push-to-talk. Best effort: if the kiosk denies it,
-        // the stream still works receive-only.
-        let hasMic = false;
-        try {
-          const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
-          if (cancelled) {
-            ms.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          const track = ms.getAudioTracks()[0] ?? null;
-          if (track) {
-            track.enabled = false;
-            thisPc.addTrack(track, ms);
-            mic = track;
-            hasMic = true;
-            setMicReady(true);
-          }
-        } catch {
-          /* receive-only */
-        }
+        // Receive-only: audio comes down, nothing goes up until PTT.
         thisPc.addTransceiver("video", { direction: "recvonly" });
-        thisPc.addTransceiver("audio", {
-          direction: hasMic ? "sendrecv" : "recvonly",
-        });
+        thisPc.addTransceiver("audio", { direction: "recvonly" });
         const offer = await thisPc.createOffer();
         await thisPc.setLocalDescription(offer);
         const res = await fetch(
@@ -156,9 +177,17 @@ function LiveView({ src, name }: { src: string; name: string }) {
     };
 
     pttRef.current = (on: boolean) => {
-      if (mic) {
-        mic.enabled = on;
-        setTalking(on);
+      if (on) {
+        void ensureMic().then((track) => {
+          if (cancelled) return;
+          if (track) {
+            track.enabled = true;
+            setTalking(true);
+          }
+        });
+      } else if (micTrack) {
+        micTrack.enabled = false;
+        setTalking(false);
       }
     };
     restartRef.current = () => {
@@ -173,6 +202,12 @@ function LiveView({ src, name }: { src: string; name: string }) {
       cancelled = true;
       if (retryTimer) window.clearTimeout(retryTimer);
       cleanupPc();
+      try {
+        micPc?.close();
+      } catch {
+        /* noop */
+      }
+      micTrack?.stop();
       setState("idle");
     };
   }, [src]);
@@ -212,7 +247,7 @@ function LiveView({ src, name }: { src: string; name: string }) {
           ) : null}
         </div>
       ) : null}
-      {state === "live" && micReady ? (
+      {state === "live" ? (
         <button
           className={cn(
             "absolute bottom-3 right-3 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium shadow-lg transition-colors",
@@ -229,6 +264,7 @@ function LiveView({ src, name }: { src: string; name: string }) {
           onPointerCancel={() => pttRef.current(false)}
           onContextMenu={(e) => e.preventDefault()}
           aria-label={`Hold to talk through ${name}`}
+          title={micFailed ? "Microphone unavailable — video still works" : "Hold to talk"}
         >
           <Mic className="size-4" aria-hidden="true" />
           {talking ? "Talking…" : "Hold to talk"}

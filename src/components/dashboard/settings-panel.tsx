@@ -95,6 +95,15 @@ export function SettingsPanel() {
             ]}
           />
           <Segmented
+            label="Night dim"
+            value={settings.nightDim ? "on" : "off"}
+            onChange={(v) => void update({ nightDim: v === "on" })}
+            options={[
+              { value: "on", label: "On" },
+              { value: "off", label: "Off" },
+            ]}
+          />
+          <Segmented
             label="Background"
             value={settings.backgroundMode}
             onChange={(backgroundMode) => void update({ backgroundMode })}
