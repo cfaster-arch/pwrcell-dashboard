@@ -19,10 +19,6 @@
     border-radius:8px; width:44px; height:44px; cursor:pointer;}
   header h1{font-size:18px; margin:0; font-weight:600;}
   #clock{margin-left:auto; color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums;}
-  .pillbar{display:flex; gap:8px; padding:12px 16px;}
-  .pillbar .p{padding:8px 18px; border-radius:999px; border:1px solid var(--line);
-    background:var(--panel); color:var(--dim); font-size:14px; cursor:pointer;}
-  .pillbar .p.on{background:var(--blue); border-color:var(--blue); color:#06121f; font-weight:600;}
   /* drawer */
   #scrim{position:fixed; inset:0; background:rgba(0,0,0,.55); opacity:0; pointer-events:none;
     transition:opacity .2s; z-index:30;}
@@ -60,7 +56,7 @@
   .tile.solar{border-left:4px solid var(--amber);} .tile.solar .val{color:var(--amber);}
   .tile.home{border-left:4px solid var(--blue);} .tile.home .val{color:var(--blue);}
   .tile.batt{border-left:4px solid var(--green);} .tile.batt .val{color:var(--green);}
-  .tile.grid{border-left:4px solid #b48cff;} .tile.grid .val{color:#b48cff;}
+  .tile.grid{border-left:4px solid #b48cff;} .tile.grid .val{color:var(--grid,#b48cff);}
   /* cameras */
   #camsec{padding:0 16px 16px; display:none; flex:1.6; flex-direction:column; min-height:0;}
   #camsec.show{display:flex; animation:slidein .25s ease;}
@@ -84,6 +80,7 @@
   @keyframes blink{50%{opacity:.25;}}
   .badge.snap{background:#2a3547; color:var(--dim);}
   .badge.off{background:#222b3a; color:#5b6678;}
+  .badge.ended{background:var(--amber); color:#231600;}
   .battag{margin-left:auto; font-size:12px; color:var(--dim);}
   .view{position:relative; background:#05070b; flex:1; min-height:200px;}
   .view canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
@@ -91,8 +88,13 @@
     background:rgba(0,0,0,.55); padding:2px 8px; border-radius:6px; font-variant-numeric:tabular-nums;}
   .view .upd{position:absolute; left:10px; bottom:8px; font-size:12px; color:#cfe3ff;
     background:rgba(0,0,0,.55); padding:2px 8px; border-radius:6px;}
-  .view .offmsg{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#5b6678; font-size:14px;}
+  .view .sess{position:absolute; left:10px; top:8px; font-size:12px; color:#ffd9a0;
+    background:rgba(0,0,0,.55); padding:2px 8px; border-radius:6px; font-variant-numeric:tabular-nums;}
+  .view .offmsg, .view .sessend{position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px; color:#8b96a9; font-size:14px;
+    background:rgba(5,7,11,.72); text-align:center; padding:0 24px;}
+  .view .sessend button{border:1px solid var(--blue); background:var(--blue); color:#06121f;
+    border-radius:8px; padding:10px 22px; font-size:14px; font-weight:700; cursor:pointer;}
   .ctl{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
   .seg{display:flex; background:#0d1219; border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px;}
   .seg button{flex:1; border:none; background:none; color:var(--dim); padding:9px 0; font-size:14px;
@@ -103,6 +105,8 @@
   .introw .ip{border:1px solid var(--line); background:#0d1219; color:var(--dim); border-radius:8px;
     padding:8px 12px; font-size:13px; cursor:pointer;}
   .introw .ip.on{background:var(--amber); border-color:var(--amber); color:#231600; font-weight:700;}
+  .note{font-size:12px; color:var(--dim); line-height:1.45;}
+  .note b{color:var(--txt); font-weight:600;}
   #ptt{border:1px solid var(--red); background:none; color:var(--red); border-radius:8px;
     padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; user-select:none;}
   #ptt.talking{background:var(--red); color:#fff;}
@@ -110,8 +114,9 @@
   .btnrow button{flex:1; min-width:70px; border:1px solid var(--line); background:var(--panel2);
     color:var(--txt); border-radius:8px; padding:9px 6px; font-size:13px; cursor:pointer;}
   .btnrow button.armed{background:var(--amber); border-color:var(--amber); color:#231600; font-weight:700;}
+  .btnrow button:disabled{opacity:.32; cursor:not-allowed;}
   .mocknote{margin:0 16px 20px; padding:10px 14px; border:1px dashed var(--line); border-radius:10px;
-    color:var(--dim); font-size:13px;}
+    color:var(--dim); font-size:13px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -157,7 +162,8 @@
     <div class="cams" id="cams"></div>
   </section>
 
-  <p class="mocknote">Mockup — feeds are simulated. Toggle <b>Camera streams</b> in the menu (&#9776;) to show/hide this section.</p>
+  <p class="mocknote"><b>Mockup — feeds are simulated.</b> Toggle <b>Camera streams</b> in the menu (&#9776;) to show/hide this section.<br>
+  Ring reality check baked in: live sessions end after ~10 min (demo shortens this to 90s) and auto-reconnect (3 tries, then manual). The battery camera has <b>no snapshots</b> without a Ring Protect plan. Snapshot intervals start at 30s (Ring's floor on wired cams). Siren / floodlight / motion snooze need ring-mqtt alongside go2rtc — marked planned.</p>
 </main>
 
 <script>
@@ -181,17 +187,19 @@ document.getElementById('camtoggle').onclick = e => {
   openD(false);
 };
 
-const INTERVALS = ['5s','15s','30s','60s'];
+// Demo-shortened Ring session cap (real: ~10 min).
+const SESSION_CAP_S = 90;
+// Realistic Ring snapshot intervals (seconds).
+const INTERVALS = [{l:'30s',s:30},{l:'60s',s:60},{l:'5m',s:300}];
 const cameras = [
-  {name:'Front Door', wired:false, siren:true,  light:true},
-  {name:'Driveway',   wired:true,  siren:false, light:true},
+  {name:'Front Door', wired:false, canSnap:false},  // battery, no Protect plan
+  {name:'Driveway',   wired:true,  canSnap:true},   // wired
 ];
 
 function fakeFrame(ctx,w,h,t,seed){
   const g = ctx.createLinearGradient(0,0,w,h);
   g.addColorStop(0,'#1c2733'); g.addColorStop(1,'#0c1219');
   ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-  // fake "scene": horizon + moving blobs
   ctx.fillStyle = '#243144'; ctx.fillRect(0,h*0.62,w,h*0.38);
   for(let i=0;i<14;i++){
     const x = (seed*97 + i*53 + t*(4+i)) % w, y = h*0.3 + ((seed*31+i*71)%(h*0.4));
@@ -202,84 +210,129 @@ function fakeFrame(ctx,w,h,t,seed){
   for(let y=0;y<h;y+=4){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
 }
 
+const fmtDur = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+
 cameras.forEach((c,idx)=>{
   const card = document.createElement('div'); card.className='cam'; card.dataset.idx = idx;
   card.innerHTML = `
     <div class="ch"><b>${c.name}</b><span class="badge live">LIVE</span>
-      <span class="battag">${c.wired?'wired':'battery-powered'}</span></div>
+      <span class="battag">${c.wired?'wired':'battery · no Protect'}</span></div>
     <div class="view"><canvas width="480" height="270"></canvas>
+      <span class="sess" style="display:none"></span>
       <span class="upd" style="display:none"></span><span class="ts"></span>
-      <div class="offmsg" style="display:none">Camera off</div></div>
+      <div class="offmsg" style="display:none">Camera off</div>
+      <div class="sessend" style="display:none">
+        <div class="se-msg">Ring ended the live session<br>(~10 min limit)</div>
+        <button>Tap to restart Live</button>
+      </div>
+    </div>
     <div class="ctl">
       <div class="seg">
         <button data-m="live" class="on">Live</button>
-        <button data-m="snap">Snapshots</button>
+        ${c.canSnap?'<button data-m="snap">Snapshots</button>':''}
         <button data-m="off">Off</button>
       </div>
+      ${c.canSnap?`
       <div class="introw" style="display:none">
         <span class="t">Every</span>
-        ${INTERVALS.map((v,i)=>`<button class="ip${i===0?' on':''}" data-iv="${v}">${v}</button>`).join('')}
+        ${INTERVALS.map((v,i)=>`<button class="ip${i===0?' on':''}" data-iv="${v.s}">${v.l}</button>`).join('')}
+      </div>`:`
+      <div class="note"><b>No snapshots</b> — this battery camera has no Ring Protect plan, so snapshots aren't available. Live view only.</div>`}
+      <div class="note">${c.wired
+        ? 'Snapshots every 30s or slower (Ring limit on wired cams).'
+        : 'Streaming pauses motion alerts and drains battery — keep live sessions short on this camera.'} Ring ends live sessions after ~10 min; the dashboard reconnects automatically (3 tries, then manual).</div>
+      <div class="btnrow">
         <button id="ptt">Hold to talk</button>
+        ${c.canSnap?'<button data-b="shot">Snapshot now</button>':''}
       </div>
       <div class="btnrow">
-        ${c.siren?'<button data-b="siren">Siren</button>':''}
-        ${c.light?'<button data-b="light">Floodlight</button>':''}
-        <button data-b="snooze">Snooze motion</button>
-        <button data-b="shot">Snapshot now</button>
+        <button disabled title="Needs ring-mqtt alongside go2rtc (phase 2)">Siren · planned</button>
+        <button disabled title="Needs ring-mqtt alongside go2rtc (phase 2)">Floodlight · planned</button>
+        <button disabled title="Needs ring-mqtt alongside go2rtc (phase 2)">Snooze · planned</button>
       </div>
     </div>`;
   camsEl.appendChild(card);
 
   const cv = card.querySelector('canvas'), ctx = cv.getContext('2d');
   const ts = card.querySelector('.ts'), upd = card.querySelector('.upd');
-  const offmsg = card.querySelector('.offmsg'), badge = card.querySelector('.badge');
+  const sess = card.querySelector('.sess');
+  const offmsg = card.querySelector('.offmsg'), sessend = card.querySelector('.sessend');
+  const badge = card.querySelector('.badge');
   const introw = card.querySelector('.introw');
-  let mode='live', iv='5s', raf=null, snapTimer=null, lastSnap=Date.now();
+  let mode='live', ivS=30, raf=null, snapTimer=null, sessTimer=null, tick1s=null, lastSnap=Date.now();
 
-  const stopAll = ()=>{ cancelAnimationFrame(raf); clearInterval(snapTimer); raf=snapTimer=null; };
+  const stopAll = ()=>{ cancelAnimationFrame(raf); clearInterval(snapTimer); clearInterval(sessTimer); clearInterval(tick1s);
+    raf=snapTimer=sessTimer=tick1s=null; };
+
+  const MAX_AUTO = 3;
+  let reconn = 0;
+  const seMsg = card.querySelector('.se-msg'), seBtn = sessend.querySelector('button');
+  function autoReconnect(){
+    if(reconn < MAX_AUTO){
+      reconn++;
+      seMsg.innerHTML = 'Ring ended the live session<br>Reconnecting&hellip; (auto '+reconn+' of '+MAX_AUTO+')';
+      seBtn.style.display = 'none';
+      sessend.style.display = 'flex';
+      badge.className = 'badge ended'; badge.textContent = 'RECONNECTING';
+      setTimeout(()=>{ if(mode==='live' && sessend.style.display==='flex') setMode('live'); }, 2000);
+    } else {
+      seMsg.innerHTML = 'Ring ended the live session<br>Auto-reconnect paused after '+MAX_AUTO+' tries';
+      seBtn.style.display = '';
+      sessend.style.display = 'flex';
+      badge.className = 'badge ended'; badge.textContent = 'ENDED';
+    }
+  }
+  function sessionClock(startedAt){
+    sess.style.display = 'inline';
+    tick1s = setInterval(()=>{
+      const el = (Date.now()-startedAt)/1000;
+      sess.textContent = 'session '+fmtDur(el);
+      if(el >= SESSION_CAP_S){ stopAll(); sess.style.display='none'; autoReconnect(); }
+    }, 1000);
+  }
+
   function drawLive(){
+    const startedAt = Date.now();
     const loop = t => { fakeFrame(ctx,480,270,t/60,idx+1);
       ts.textContent = new Date().toLocaleTimeString([], {hour12:false});
       raf = requestAnimationFrame(loop); };
-    loop(0);
+    loop(0); sessionClock(startedAt);
   }
   function drawSnap(){
     const tick = ()=>{ fakeFrame(ctx,480,270,Date.now()/4000,idx+1);
       lastSnap = Date.now();
       ts.textContent = new Date().toLocaleTimeString([], {hour12:false}); };
     tick();
-    const ms = parseInt(iv)*1000;
-    snapTimer = setInterval(tick, ms);
-    setInterval(()=>{ if(mode==='snap')
+    snapTimer = setInterval(tick, ivS*1000);
+    tick1s = setInterval(()=>{ if(mode==='snap')
       upd.textContent = 'updated '+Math.round((Date.now()-lastSnap)/1000)+'s ago'; }, 1000);
   }
   function setMode(m){
     mode=m; stopAll();
     card.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on', b.dataset.m===m));
-    introw.style.display = m==='snap' ? 'flex' : 'none';
+    if(introw) introw.style.display = m==='snap' ? 'flex' : 'none';
     upd.style.display = m==='snap' ? 'inline' : 'none';
+    sess.style.display = 'none';
     offmsg.style.display = m==='off' ? 'flex' : 'none';
+    sessend.style.display = 'none';
     cv.style.visibility = m==='off' ? 'hidden' : 'visible';
     badge.className = 'badge ' + (m==='live'?'live':m==='snap'?'snap':'off');
     badge.textContent = m==='live'?'LIVE':m==='snap'?'SNAPSHOTS':'OFF';
     if(m==='live') drawLive(); else if(m==='snap') drawSnap();
   }
-  card.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-  card.querySelectorAll('.ip').forEach(b=>b.onclick=()=>{
+  card.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ if(b.dataset.m==='live') reconn=0; setMode(b.dataset.m); });
+  seBtn.onclick = ()=>{ reconn=0; setMode('live'); };
+  if(introw) card.querySelectorAll('.ip').forEach(b=>b.onclick=()=>{
     card.querySelectorAll('.ip').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); iv=b.dataset.iv; if(mode==='snap') setMode('snap');
+    b.classList.add('on'); ivS=parseInt(b.dataset.iv,10); if(mode==='snap') setMode('snap');
   });
   const ptt = card.querySelector('#ptt');
   const talk = on => ptt.classList.toggle('talking', on);
   ptt.addEventListener('pointerdown', e=>{e.preventDefault(); talk(true);});
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>ptt.addEventListener(ev, ()=>talk(false)));
-  card.querySelectorAll('.btnrow button').forEach(b=>b.onclick=()=>{
-    if(b.dataset.b==='shot'){ fakeFrame(ctx,480,270,Date.now()/4000,idx+1);
-      ts.textContent = new Date().toLocaleTimeString([], {hour12:false}); return; }
-    b.classList.toggle('armed');
-    if(b.dataset.b==='snooze' && b.classList.contains('armed'))
-      setTimeout(()=>b.classList.remove('armed'), 3000);
-  });
+  const shot = card.querySelector('[data-b="shot"]');
+  if(shot) shot.onclick = ()=>{ fakeFrame(ctx,480,270,Date.now()/4000,idx+1);
+    ts.textContent = new Date().toLocaleTimeString([], {hour12:false}); };
   setMode('live');
 });
 
