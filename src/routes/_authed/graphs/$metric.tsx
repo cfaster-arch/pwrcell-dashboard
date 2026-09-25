@@ -36,7 +36,7 @@ const loadMetric = createServerFn({ method: "GET" })
     return { live, series, settings };
   });
 
-export const Route = createFileRoute("/graphs/$metric")({
+export const Route = createFileRoute("/_authed/graphs/$metric")({
   loader: ({ params }) => loadMetric({ data: { metric: params.metric } }),
   component: MetricPage,
 });

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import { GO2RTC_PORT } from "@/lib/ring/go2rtc.server";
 
 /**
@@ -51,8 +52,16 @@ async function proxy(request: Request, splat: string): Promise<Response> {
 export const Route = createFileRoute("/api/rtc/$")({
   server: {
     handlers: {
-      GET: ({ request, params }) => proxy(request, params._splat ?? ""),
-      POST: ({ request, params }) => proxy(request, params._splat ?? ""),
+      GET: async ({ request, params }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
+        return proxy(request, params._splat ?? "");
+      },
+      POST: async ({ request, params }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
+        return proxy(request, params._splat ?? "");
+      },
     },
   },
 });

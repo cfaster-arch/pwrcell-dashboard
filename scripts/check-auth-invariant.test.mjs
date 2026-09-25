@@ -9,7 +9,10 @@ import {
   authEnabledFromEnvValue,
   authInvariantWarnings,
   buildAuthEnabled,
+  checkAuthnInvariants,
   compareAuthInvariant,
+  compareSemver,
+  pluginFactoriesInOrder,
   probeDevAuthEnabled,
 } from "./check-auth-invariant.mjs";
 import { projectRoot } from "./with-app-env.mjs";
@@ -95,16 +98,51 @@ test("the build side resolves the template's shipped app-env", () => {
   assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
 });
 
-test("the CLI reports rather than silently passing when run via a symlink", async () => {
-  // A check whose exit code is the whole signal must never no-op to 0 because
-  // process.argv[1] came in through a symlinked path.
+test("unreachable dev server no longer fails the command once static checks pass", async () => {
+  // Suite 1 (static Phase 1 invariants) is the primary signal now; suite 2
+  // (live VITE_AUTH_ENABLED comparison) is skipped with a warning when no dev
+  // server answers. A symlinked argv[1] must still resolve the project root
+  // so the static checks run against the real repo.
   const link = join(mkdtempSync(join(tmpdir(), "auth-invariant-link-")), "scripts");
   symlinkSync(join(projectRoot(), "scripts"), link);
-  const error = await promisify(execFile)(process.execPath, [
+  const { stdout } = await promisify(execFile)(process.execPath, [
     join(link, "check-auth-invariant.mjs"),
     "--dev-url",
     "http://127.0.0.1:1",
-  ]).catch((err) => err);
-  assert.equal(error.code, 2);
-  assert.match(error.stderr, /could not read the dev server's resolved VITE_AUTH_ENABLED/);
+  ]);
+  assert.match(stdout, /Phase 1 authn invariants: ok/);
+});
+
+test("Phase 1 authn invariants pass on this repo", () => {
+  assert.deepEqual(checkAuthnInvariants(projectRoot()), []);
+});
+
+test("plugin factory order parsing finds the last plugin", () => {
+  const src = `
+    plugins: [
+      organization(),
+      admin({ defaultRole: "user" }),
+      apiKey(),
+      // must stay last
+      tanstackStartCookies(),
+    ],
+  `;
+  assert.deepEqual(pluginFactoriesInOrder(src), [
+    "organization",
+    "admin",
+    "apiKey",
+    "tanstackStartCookies",
+  ]);
+});
+
+test("plugin factory order parsing reports an empty list without a plugins array", () => {
+  assert.deepEqual(pluginFactoriesInOrder("export const auth = betterAuth({});"), []);
+});
+
+test("semver comparison handles the version floors", () => {
+  assert.equal(compareSemver("1.6.33", "1.3.26"), 1);
+  assert.equal(compareSemver("1.3.26", "1.3.26"), 0);
+  assert.equal(compareSemver("1.2.9", "1.3.26"), -1);
+  assert.equal(compareSemver("0.45.3", "0.45"), 1);
+  assert.equal(compareSemver("0.44.0", "0.45"), -1);
 });

@@ -256,10 +256,12 @@ function dueForReminder(settings: AlertSettings, rule: AlertRuleKey, now: number
 async function writeSample(point: PowerPoint, now: number): Promise<void> {
   try {
     const sql = await getSql();
+    // Phase 1: single-org writer — rows land in the default org. Phase 2's
+    // per-org poller will pass the org explicitly (no default in the DDL).
     await sql.query(
-      `insert into energy_samples (ts, solar_w, home_w, battery_w, grid_w, soc, sys_mode, grid_state)
-       values (to_timestamp($1 / 1000.0), $2, $3, $4, $5, $6, $7, $8)
-       on conflict (ts) do nothing`,
+      `insert into energy_samples (organization_id, ts, solar_w, home_w, battery_w, grid_w, soc, sys_mode, grid_state)
+       values ('org_default', to_timestamp($1 / 1000.0), $2, $3, $4, $5, $6, $7, $8)
+       on conflict (organization_id, ts) do nothing`,
       [
         point.ts,
         point.solarW,

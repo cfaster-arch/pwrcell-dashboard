@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import {
   acknowledgeAlert,
   acknowledgeAll,
@@ -10,6 +11,8 @@ export const Route = createFileRoute("/api/alerts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         const url = new URL(request.url);
         if (url.searchParams.get("unacknowledged") === "1") {
           return Response.json(
@@ -24,6 +27,8 @@ export const Route = createFileRoute("/api/alerts")({
         );
       },
       POST: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         const body = (await request.json().catch(() => ({}))) as {
           action?: string;
           id?: unknown;

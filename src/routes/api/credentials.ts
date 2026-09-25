@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePlatformAdmin } from "@/lib/authn/guard.server";
 import {
   clearCredentials,
   getCredentialMeta,
@@ -13,11 +14,15 @@ export const Route = createFileRoute("/api/credentials")({
     handlers: {
       // Never returns the password — only whether credentials exist + the email.
       GET: async () => {
+        const authz = await requirePlatformAdmin();
+        if (authz instanceof Response) return authz;
         return Response.json(getCredentialMeta(), {
           headers: { "cache-control": "no-store" },
         });
       },
       POST: async ({ request }) => {
+        const authz = await requirePlatformAdmin();
+        if (authz instanceof Response) return authz;
         let body: Body = {};
         try {
           body = (await request.json()) as Body;
@@ -39,6 +44,8 @@ export const Route = createFileRoute("/api/credentials")({
         });
       },
       DELETE: async () => {
+        const authz = await requirePlatformAdmin();
+        if (authz instanceof Response) return authz;
         clearCredentials();
         resetToDemo();
         return Response.json(getCredentialMeta(), {

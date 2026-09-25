@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import {
   discoverCameras,
   ringAuthStart,
@@ -37,6 +38,8 @@ export const Route = createFileRoute("/api/ring")({
   server: {
     handlers: {
       GET: async () => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         const [status, settings] = await Promise.all([
           ringStatus(),
           Promise.resolve(loadCameraSettings()),
@@ -44,6 +47,8 @@ export const Route = createFileRoute("/api/ring")({
         return Response.json({ ...status, settings }, { headers: noStore });
       },
       POST: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         let body: ActionBody = {};
         try {
           body = (await request.json()) as ActionBody;
@@ -115,6 +120,8 @@ export const Route = createFileRoute("/api/ring")({
         }
       },
       PUT: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         let body: Record<string, unknown> = {};
         try {
           body = (await request.json()) as Record<string, unknown>;

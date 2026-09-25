@@ -64,20 +64,57 @@ These six surfaces are global today and must be scoped per org:
 - [ ] Restart-test: data survives a service restart → covered during Phase 1+
       integration testing (dev server start/stop cycles with auth tables).
 
-### Phase 1 — Auth core (3–4 h)
-- [ ] Install `better-auth`, `drizzle-orm`, `drizzle-kit`; generate schema; run migrations.
-- [ ] Create `src/lib/auth.ts` (better-auth instance) and mount `src/routes/api/auth/$.ts`.
-- [ ] Build sign-in page + sign-out; session cookie config.
-- [ ] Route protection: `createMiddleware().server(...)` calling
-      `auth.api.getSession({ headers: getRequestHeaders() })`, redirect to `/signin`
-      when absent; attach via `server: { middleware: [...] }` on a `/_protected`
-      layout route. Guard API routes inside `createServerFn` handlers (reuse the
-      same middleware).
-- [ ] **Replace nginx Basic Auth — do not stack it.** Two auth layers = two
-      credential lifecycles and confused logout semantics. App auth owns everything.
-- [ ] Schedule periodic deletion of expired sessions (Better Auth does not reliably
-      sweep them; the table grows unbounded otherwise).
-- [ ] Rate-limit login attempts.
+### Phase 1 — Auth core (3–4 h) — DONE 2026-09-25 (branch `multi-user-plan`)
+- [x] Installed `better-auth@1.6.33`, `drizzle-orm`; migrations
+      `0003_auth_core.sql` (better-auth schema), `0004_auth_tenant.sql`
+      (organization/member/invitation/apikey), `0005_energy_org.sql`
+      (`organization_id` on energy/alerts, composite PK on energy_samples).
+- [x] `src/lib/authn/server.ts` (better-auth instance: organization, admin,
+      apiKey, `tanstackStartCookies()` last — boot-asserted; `cookieCache`
+      disabled so revocation/role-change/ban take effect on the next request;
+      DB-backed rate-limit storage; `trustedProxies` so nginx XFF resolves to
+      the real client IP; `useSecureCookies` pinned for production;
+      fail-loud when `BETTER_AUTH_SECRET` is unset in production).
+- [x] `src/routes/api/auth/$.ts` mount: impersonation 404s, public sign-up
+      404s, sign-in wrapped with DB login throttling; guards match on a
+      normalized (decoded, trailing-slash-stripped) path; `/api/auth/admin/*`
+      enforces the same platform-admin gate + 12h freshness as app routes.
+- [x] Sign-in page + sign-out; session cookie config (HttpOnly, SameSite=Lax).
+- [x] `src/lib/authn/guard.server.ts`: `requireOrgAccess()` (DB membership
+      check, 404 on cross-org — never 403), `getMyOrgId()` (validates against
+      `member`, returns 401/404 Responses — never throws page redirects),
+      `requirePlatformAdmin()` (404 oracle protection + 12h session freshness).
+- [x] Login throttling (`login-throttle.server.ts`): DB-backed
+      `login_attempts`; 5+ failures → progressive delay (≤8s), 10+ → 15-min
+      lockout; counted per email OR IP; `Retry-After` computed in SQL;
+      non-enumerating (unknown vs wrong-password identical 401s). Composes with
+      better-auth's built-in 3-per-10s sign-in burst rule.
+- [x] `scripts/seed-default-org.mjs`: idempotent admin/org/owner-membership
+      seed, history backfill, delayed FK constraints with `ON DELETE CASCADE`.
+- [x] `npm run check:auth` static invariants (15 tests) + crypto/audit tests
+      (16 tests) — 31/31 passing; typecheck + production build pass.
+- [x] Live smoke: sign-in → session → API 200; sign-up/impersonate (+encoded)
+      404; admin endpoints gated; sign-out → immediate 401 (session
+      invalidated); lockout → 429 with `Retry-After`.
+- [ ] **Replace nginx Basic Auth — do not stack it** (deploy-time, §6).
+- [ ] Expired-session sweep (Better Auth does not reliably sweep; the table
+      grows unbounded otherwise) — deferred to Phase 2/3.
+
+**Phase 1 DeepSeek review (V4 Flash; Pro repeatedly returned empty answers on
+these inputs — substitution logged).** Fixed: (1) fail-loud on missing
+`BETTER_AUTH_SECRET` in production; (2) `useSecureCookies` pinned for prod;
+(3) `trustedProxies` for XFF (else all users share one 3-per-10s sign-in
+bucket); (4) `/api/auth/admin/*` now enforces `requirePlatformAdmin` (12h
+freshness was bypassable via the raw mount); (5) path normalization before
+filter matching (encoded/trailing-slash bypasses); (6) `getMyOrgId` returns
+401/404 Responses instead of throwing redirects; (7) `Retry-After` computed
+in SQL (no V8 date-parsing); (8) seed idempotency (no membership-id churn,
+case-insensitive email, `RETURNING` backfill counts, conrelid-scoped FK
+checks). Acknowledged (not fixed — bounded residual, matches the
+no-gold-plating directive): rate-limit/throttle check-then-act races
+(better-auth documents best-effort; built-in 3-per-10s burst rule bounds
+parallelism; sustained attacks still lock out), `getClientIp` trust depends on
+the nginx `$proxy_add_x_forwarded_for` topology (verified in setup script).
 
 ### Phase 2 — Multi-tenancy (4–6 h, the meat)
 - [ ] Enable `organization()` plugin; org-per-customer model.
@@ -139,9 +176,16 @@ sign-in → org scoping → kiosk pairing flow:
       reach Node so `closeDb()` runs).
 - [ ] Generate the DEK once (`node scripts/gen-dek.mjs` — to be added), store at
       the `DEK_FILE` path with `0600` owned by the service user, **outside the repo**.
-- [ ] Run `node scripts/seed-default-org.mjs` (to be added) to create the platform
+- [ ] Run `node scripts/seed-default-org.mjs` to create the platform
       admin + default org, then backfill/migrate existing history into it.
+      **Run it while the app is STOPPED** — PGlite's dataDir is single-process;
+      a second process writing while the app runs produces stale reads
+      (observed: "Credential account not found" / "User not found" on a live
+      server right after a concurrent seed; clean when seeded stopped).
 - [ ] Set `BETTER_AUTH_SECRET` to a long random value (env, never in the repo).
+      The app now **fails loud at boot** if it is unset in production
+      (an ephemeral per-process secret would silently drop all sessions on
+      every restart).
 - [ ] Verify: sign-in, admin panel, per-org isolation, kiosk pairing, then DNS cutover.
 
 ## Build log

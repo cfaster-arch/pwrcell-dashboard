@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import { loadDisplaySettings, saveDisplaySettings } from "@/lib/display-settings.server";
 
 const NO_STORE = { "cache-control": "no-store" };
@@ -7,9 +8,13 @@ export const Route = createFileRoute("/api/display")({
   server: {
     handlers: {
       GET: async () => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         return Response.json(loadDisplaySettings(), { headers: NO_STORE });
       },
       PUT: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         let body: Record<string, unknown> = {};
         try {
           body = (await request.json()) as Record<string, unknown>;

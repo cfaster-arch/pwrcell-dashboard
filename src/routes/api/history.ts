@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import { getSql } from "@/lib/db";
 
 export type HistoryRange = "24h" | "7d" | "30d" | "365d";
@@ -132,6 +133,8 @@ export const Route = createFileRoute("/api/history")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         const url = new URL(request.url);
         const q = url.searchParams.get("range");
         const range: HistoryRange =

@@ -13,7 +13,7 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
   return { live, series, settings };
 });
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authed/")({
   loader: () => loadDashboard(),
   component: Home,
 });

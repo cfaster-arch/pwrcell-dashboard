@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   BatteryCharging,
   Home,
   KeyRound,
   LayoutDashboard,
+  LogOut,
   Menu,
   SunMedium,
+  UserRound,
   UtilityPole,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/authn/client";
 import { AlertsSection } from "./alerts-panel";
 import { TouSettingsSection } from "./cost-section";
 import { useDisplaySettings } from "./display-settings-context";
@@ -34,6 +37,7 @@ export function NavMenu({
 }) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { settings } = useDisplaySettings();
 
   useEffect(() => {
@@ -93,6 +97,30 @@ export function NavMenu({
                 >
                   <KeyRound className="size-5" aria-hidden="true" />
                   PWRview login
+                </button>
+              </li>
+              <li>
+                <Link
+                  to="/account"
+                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <UserRound className="size-5" aria-hidden="true" />
+                  Account
+                </Link>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setOpen(false);
+                    await authClient.signOut();
+                    navigate({ to: "/signin" });
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <LogOut className="size-5" aria-hidden="true" />
+                  Sign out
                 </button>
               </li>
               {LINKS.map((l) => {

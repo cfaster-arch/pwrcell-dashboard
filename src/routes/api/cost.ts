@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireSessionApi } from "@/lib/authn/guard.server";
 import { getSql } from "@/lib/db";
 import { loadTouSettings, timeToMinutes } from "@/lib/tou-settings.server";
 import { seasonForMonth } from "@/lib/tou-types";
@@ -70,6 +71,8 @@ export const Route = createFileRoute("/api/cost")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const authz = await requireSessionApi();
+        if (authz instanceof Response) return authz;
         const url = new URL(request.url);
         const timeZone = url.searchParams.get("tz") || "America/Los_Angeles";
         const rates = loadTouSettings();

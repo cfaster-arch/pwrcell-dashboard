@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
 import { Route as ApiAlertsRouteImport } from './routes/api/alerts'
 import { Route as ApiAlertsSettingsRouteImport } from './routes/api/alerts-settings'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
@@ -23,13 +25,25 @@ import { Route as ApiLiveRouteImport } from './routes/api/live'
 import { Route as ApiRingRouteImport } from './routes/api/ring'
 import { Route as ApiSeriesRouteImport } from './routes/api/series'
 import { Route as ApiTouRouteImport } from './routes/api/tou'
-import { Route as GraphsMetricRouteImport } from './routes/graphs/$metric'
+import { Route as AuthedAccountIndexRouteImport } from './routes/_authed/account/index'
+import { Route as AuthedAccountPasswordRouteImport } from './routes/_authed/account/password'
+import { Route as AuthedGraphsMetricRouteImport } from './routes/_authed/graphs/$metric'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiRtcSplatRouteImport } from './routes/api/rtc.$'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedIndexRoute = AuthedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthedRoute,
 } as any)
 const ApiAlertsRoute = ApiAlertsRouteImport.update({
   id: '/api/alerts',
@@ -96,9 +110,24 @@ const ApiTouRoute = ApiTouRouteImport.update({
   path: '/api/tou',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GraphsMetricRoute = GraphsMetricRouteImport.update({
+const AuthedAccountIndexRoute = AuthedAccountIndexRouteImport.update({
+  id: '/account/',
+  path: '/account/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAccountPasswordRoute = AuthedAccountPasswordRouteImport.update({
+  id: '/account/password',
+  path: '/account/password',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedGraphsMetricRoute = AuthedGraphsMetricRouteImport.update({
   id: '/graphs/$metric',
   path: '/graphs/$metric',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRtcSplatRoute = ApiRtcSplatRouteImport.update({
@@ -108,7 +137,8 @@ const ApiRtcSplatRoute = ApiRtcSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthedIndexRoute
+  '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/cost': typeof ApiCostRoute
@@ -122,11 +152,14 @@ export interface FileRoutesByFullPath {
   '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
-  '/graphs/$metric': typeof GraphsMetricRoute
+  '/account/password': typeof AuthedAccountPasswordRoute
+  '/graphs/$metric': typeof AuthedGraphsMetricRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rtc/$': typeof ApiRtcSplatRoute
+  '/account/': typeof AuthedAccountIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/cost': typeof ApiCostRoute
@@ -140,12 +173,17 @@ export interface FileRoutesByTo {
   '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
-  '/graphs/$metric': typeof GraphsMetricRoute
+  '/': typeof AuthedIndexRoute
+  '/account/password': typeof AuthedAccountPasswordRoute
+  '/graphs/$metric': typeof AuthedGraphsMetricRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rtc/$': typeof ApiRtcSplatRoute
+  '/account': typeof AuthedAccountIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/cost': typeof ApiCostRoute
@@ -159,13 +197,18 @@ export interface FileRoutesById {
   '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
-  '/graphs/$metric': typeof GraphsMetricRoute
+  '/_authed/': typeof AuthedIndexRoute
+  '/_authed/account/password': typeof AuthedAccountPasswordRoute
+  '/_authed/graphs/$metric': typeof AuthedGraphsMetricRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rtc/$': typeof ApiRtcSplatRoute
+  '/_authed/account/': typeof AuthedAccountIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/cost'
@@ -179,11 +222,14 @@ export interface FileRouteTypes {
     | '/api/ring'
     | '/api/series'
     | '/api/tou'
+    | '/account/password'
     | '/graphs/$metric'
+    | '/api/auth/$'
     | '/api/rtc/$'
+    | '/account/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/cost'
@@ -197,11 +243,16 @@ export interface FileRouteTypes {
     | '/api/ring'
     | '/api/series'
     | '/api/tou'
+    | '/'
+    | '/account/password'
     | '/graphs/$metric'
+    | '/api/auth/$'
     | '/api/rtc/$'
+    | '/account'
   id:
     | '__root__'
-    | '/'
+    | '/_authed'
+    | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/cost'
@@ -215,12 +266,17 @@ export interface FileRouteTypes {
     | '/api/ring'
     | '/api/series'
     | '/api/tou'
-    | '/graphs/$metric'
+    | '/_authed/'
+    | '/_authed/account/password'
+    | '/_authed/graphs/$metric'
+    | '/api/auth/$'
     | '/api/rtc/$'
+    | '/_authed/account/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  SigninRoute: typeof SigninRoute
   ApiAlertsRoute: typeof ApiAlertsRoute
   ApiAlertsSettingsRoute: typeof ApiAlertsSettingsRoute
   ApiCostRoute: typeof ApiCostRoute
@@ -234,18 +290,32 @@ export interface RootRouteChildren {
   ApiRingRoute: typeof ApiRingRoute
   ApiSeriesRoute: typeof ApiSeriesRoute
   ApiTouRoute: typeof ApiTouRoute
-  GraphsMetricRoute: typeof GraphsMetricRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiRtcSplatRoute: typeof ApiRtcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/': {
+      id: '/_authed/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthedIndexRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/api/alerts': {
       id: '/api/alerts'
@@ -338,11 +408,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTouRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/graphs/$metric': {
-      id: '/graphs/$metric'
+    '/_authed/account/': {
+      id: '/_authed/account/'
+      path: '/account'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AuthedAccountIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/account/password': {
+      id: '/_authed/account/password'
+      path: '/account/password'
+      fullPath: '/account/password'
+      preLoaderRoute: typeof AuthedAccountPasswordRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/graphs/$metric': {
+      id: '/_authed/graphs/$metric'
       path: '/graphs/$metric'
       fullPath: '/graphs/$metric'
-      preLoaderRoute: typeof GraphsMetricRouteImport
+      preLoaderRoute: typeof AuthedGraphsMetricRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/rtc/$': {
@@ -355,8 +446,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedIndexRoute: typeof AuthedIndexRoute
+  AuthedAccountPasswordRoute: typeof AuthedAccountPasswordRoute
+  AuthedGraphsMetricRoute: typeof AuthedGraphsMetricRoute
+  AuthedAccountIndexRoute: typeof AuthedAccountIndexRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedIndexRoute: AuthedIndexRoute,
+  AuthedAccountPasswordRoute: AuthedAccountPasswordRoute,
+  AuthedGraphsMetricRoute: AuthedGraphsMetricRoute,
+  AuthedAccountIndexRoute: AuthedAccountIndexRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+  SigninRoute: SigninRoute,
   ApiAlertsRoute: ApiAlertsRoute,
   ApiAlertsSettingsRoute: ApiAlertsSettingsRoute,
   ApiCostRoute: ApiCostRoute,
@@ -370,7 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRingRoute: ApiRingRoute,
   ApiSeriesRoute: ApiSeriesRoute,
   ApiTouRoute: ApiTouRoute,
-  GraphsMetricRoute: GraphsMetricRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiRtcSplatRoute: ApiRtcSplatRoute,
 }
 export const routeTree = rootRouteImport
