@@ -63,7 +63,12 @@
   #camsec.show{display:block; animation:slidein .25s ease;}
   @keyframes slidein{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
   #camsec h2{font-size:15px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; margin:4px 0 12px;}
+  .camsel{display:flex; gap:8px; margin-bottom:12px;}
+  .camsel button{border:1px solid var(--line); background:var(--panel); color:var(--dim);
+    border-radius:999px; padding:8px 20px; font-size:14px; cursor:pointer;}
+  .camsel button.on{background:var(--blue); border-color:var(--blue); color:#06121f; font-weight:600;}
   .cams{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .cams.single{grid-template-columns:1fr;}
   @media(max-width:760px){.cams{grid-template-columns:1fr;} #metrics{grid-template-columns:1fr 1fr;}}
   .cam{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
   .cam .ch{display:flex; align-items:center; gap:8px; padding:10px 14px;}
@@ -144,6 +149,11 @@
 
   <section id="camsec">
     <h2>Cameras</h2>
+    <div class="camsel" id="camsel">
+      <button data-v="0">Camera 1</button>
+      <button data-v="1">Camera 2</button>
+      <button data-v="both" class="on">Both</button>
+    </div>
     <div class="cams" id="cams"></div>
   </section>
 
@@ -193,7 +203,7 @@ function fakeFrame(ctx,w,h,t,seed){
 }
 
 cameras.forEach((c,idx)=>{
-  const card = document.createElement('div'); card.className='cam';
+  const card = document.createElement('div'); card.className='cam'; card.dataset.idx = idx;
   card.innerHTML = `
     <div class="ch"><b>${c.name}</b><span class="badge live">LIVE</span>
       <span class="battag">${c.wired?'wired':'battery-powered'}</span></div>
@@ -271,6 +281,15 @@ cameras.forEach((c,idx)=>{
       setTimeout(()=>b.classList.remove('armed'), 3000);
   });
   setMode('live');
+});
+
+document.getElementById('camsel').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  document.getElementById('camsel').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const v = b.dataset.v, cards = camsEl.querySelectorAll('.cam');
+  const single = v !== 'both';
+  camsEl.classList.toggle('single', single);
+  cards.forEach(cd=>{ cd.style.display = (single && cd.dataset.idx !== v) ? 'none' : ''; });
 });
 </script>
 </body>
