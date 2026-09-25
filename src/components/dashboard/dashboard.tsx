@@ -68,7 +68,7 @@ function statusCopy(live: LivePayload, fetchError: string | null): { label: stri
     return {
       label: "Demo",
       detail: live.configured
-        ? (live.error ?? "Simulated feed")
+        ? "PWRview login isn't working — showing a demo day (see PWRview login for details)"
         : "PWRview credentials not configured — showing a demo day",
       tone: "warn",
     };
