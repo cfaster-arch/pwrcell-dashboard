@@ -91,6 +91,7 @@ export function DisplaySettingsProvider({
   }, []);
 
   const removeBackground = useCallback(async () => {
+    if (!window.confirm("Remove the custom background image?")) return;
     try {
       const res = await fetch("/api/display-background", { method: "DELETE" });
       if (res.ok && mounted.current) {

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "@/lib/authn/server";
 import { requirePlatformAdmin } from "@/lib/authn/guard.server";
+import { AUDIT_ACTIONS, auditEvent } from "@/lib/authn/audit.server";
 import {
   checkLoginThrottle,
   getClientIp,
@@ -18,7 +19,8 @@ import {
  * platform admins.
  */
 
-// TODO(phase3): audit-log admin invocations via onAdminCall
+// Phase 3: better-auth 1.6.33's admin plugin exposes no onAdminCall hook, so
+// admin invocations are audit-logged in handle() after the gate passes.
 
 /**
  * Normalized request path: percent-decoded, trailing slashes stripped,
@@ -109,6 +111,10 @@ async function handleSignInWithThrottle(request: Request): Promise<Response> {
 }
 
 async function handle(request: Request): Promise<Response> {
+  // SINGLE-MOUNT INVARIANT: this file is the only mount of auth.handler in
+  // the app. Any second mount must replicate this gate and the admin.api_call
+  // audit below, or admin endpoints become reachable without platform-admin
+  // checks or logging.
   const path = normalizedPath(request.url);
   if (isImpersonatePath(path) || isSignUpPath(path)) {
     return new Response(JSON.stringify({ error: "not found" }), {
@@ -125,6 +131,19 @@ async function handle(request: Request): Promise<Response> {
     // bypassed it entirely.
     const gate = await requirePlatformAdmin(request.headers);
     if (gate instanceof Response) return gate;
+    // Phase 3: no onAdminCall hook exists on the admin plugin, so every
+    // admin invocation is audit-logged here. Admin calls are rare and
+    // privileged — a missing audit row would be a bigger problem than the
+    // extra write.
+    await auditEvent({
+      actorUserId: gate.user.id,
+      actorType: "user",
+      action: AUDIT_ACTIONS.ADMIN_API_CALL,
+      targetType: "admin-endpoint",
+      targetId: `${request.method} ${path}`,
+      ip: getClientIp(request),
+      userAgent: request.headers.get("user-agent")?.slice(0, 512) || undefined,
+    });
   }
   if (isSignInEmailPath(path, request.method)) {
     return handleSignInWithThrottle(request);

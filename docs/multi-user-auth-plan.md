@@ -181,12 +181,97 @@ tests failing identically on the untouched Phase 1 baseline).
 
 ### Phase 3 — slim (Connor's 2026-09-25 scope: "slim three")
 No polished/full admin panel. Minimal viable admin surface:
-- [ ] Minimal seed/CLI user management (create/disable users, reset passwords).
-- [ ] Immediate session revocation (already works via `cookieCache: false`; needs
-      a minimal operator path to trigger it).
-- [ ] Append-only admin audit logging (already append-only via `audit_log` +
-      hash chain; add the minimal review/export path).
-- [ ] Confirmation for destructive actions wherever UI exists.
+- [x] Minimal seed/CLI user management (create/disable users, reset passwords).
+      `scripts/admin-user.mjs`: `list`, `create` (--role, --org/--org-role),
+      `disable` (ban + session revoke), `enable`, `reset-password` (forces
+      must-change-password + session revoke), `revoke-sessions`. Secrets from
+      env only (`ADMIN_USER_EMAIL`/`ADMIN_USER_PASSWORD`, never argv, never
+      logged); every mutation appends to `audit_log` (actor_type='cli') in the
+      same hash-chain format the real verifier accepts.
+- [x] Immediate session revocation: `POST /api/admin/users/$userId/revoke-sessions`
+      (platform-admin gate, audit-logged as `session.revoked`); cookieCache is
+      already disabled so revocation bites on the next request. CLI covers the
+      same action for shell operators.
+- [x] Append-only admin audit logging: `GET /api/admin/audit` — paginated
+      newest-first review with action/orgId/actor filters; `?verify=1` runs
+      `verifyAuditChain()`; the JSON response is the export format.
+      better-auth's own `/api/auth/admin/*` invocations are now audit-logged
+      at the mount (the admin plugin has no `onAdminCall` hook in 1.6.33 —
+      verified against the installed types). New canonical actions:
+      `admin.api_call`, `session.revoked`, `user.enabled`.
+- [x] Confirmation for destructive actions wherever UI exists: PWRview
+      credential clear now confirms; Ring disconnect already did; background
+      image removal confirms; org delete has no UI surface (server-only
+      `deleteOrg`).
+
+**Phase 3 security review (2026-09-25): DeepSeek V4 Flash, 3 briefs.**
+- *Brief 1 (admin mount gate/audit):* 8 findings, none requiring code changes
+  after verification against the installed better-auth 1.6.33 sources:
+  - F1 (claimed CRITICAL path-normalization bypass): **not exploitable.**
+    better-auth's router is better-call + rou3: `new URL().pathname` (no
+    percent-decoding, dot-segments normalized identically for both sides),
+    better-call 404s on `//`, rou3 does zero decoding. The gate's
+    decode-once + lowercase only ever *widens* it (fail-closed); every
+    divergence direction was checked. The premise "rou3-style router decodes
+    and collapses" is factually wrong for this dependency tree.
+  - F2 (`instanceof Response`): dismissed — single Node realm, same global
+    constructs and checks; codebase-wide convention, out of scope to redesign.
+  - F3 (audit throw → DoS / mutex): premises false — the mutex IS released on
+    failure (both branches resolve), and no unauthenticated path calls
+    `auditEvent` (verified by grep). Fail-closed on audit failure is the
+    deliberate codebase-wide pattern.
+  - F4 (XFF spoofing): bounded residual, same as Phase 1's documented
+    acknowledgment; the field is audit-informational, never authz.
+  - F5 (mount-scoped audit): accepted as a maintenance caveat — a
+    SINGLE-MOUNT INVARIANT comment was added at the mount; any second
+    `auth.handler` mount must replicate gate + audit.
+  - F6 (no outcome field), F8 (unbounded admin writes): accepted as slim-scope
+    trade-offs, noted as future improvements.
+  - F7 (denied attempts not audited): intentional (oracle protection).
+- *Brief 2 (audit export + revoke-sessions):* fixed F-high/M-high/M-mediums:
+  - `verifyAuditChain` no longer holds the write mutex during reads (single
+    snapshot read needs none) and `limit` is capped at 5000 — a big verify
+    can't stall audit logging anymore.
+  - Verification result now reports `reachedGenesis`; the API surfaces it, so
+    callers know a truncated window only proves *internal* consistency (a
+    full-table rewrite by a DB writer needs an external checkpoint — accepted
+    residual, documented in the route).
+  - Every audit read/export is itself audit-logged (`audit.exported`) —
+    exfiltrating the trail leaves a trace. Export `offset` clamped.
+  - Revocation + its audit now run in ONE transaction (repudiation fix); the
+    audit row is skipped when nothing was deleted. `reason` persistence
+    deferred (no details column in slim scope; reason is echoed to the caller).
+  - Dismissed with verification: CSRF (better-auth session cookie is
+    `SameSite=Lax` by default — cross-site POST carries no cookie);
+    canonicalization (fixed field order over scalar columns, no jsonb);
+    "incomplete revocation" (sessions are the only credential class — no API
+    keys/PATs/OAuth grants; kiosk keys are Phase 4); cross-admin revocation
+    step-up (Connor explicitly scoped out step-up reauth); 401/404 semantics
+    (deliberate Phase 1/2 oracle design).
+- *Brief 3 (CLI audit-chain replication + concurrency):*
+  - H1 (cross-process chain fork): **fixed.** `auditEvent` and the CLI's
+    `auditCli` now wrap read-tail + insert in a transaction holding
+    `pg_advisory_xact_lock(hashtext('audit_log_append'))` — serializes
+    appenders across processes (and across pool connections on Neon). The
+    verifier already enforced linkage (`prev_hash == previous row_hash`), so a
+    fork would have been *detected*; now it can't *happen*.
+  - M1 (GENESIS anchor): verified byte-identical (`"GENESIS"` both sides).
+  - M2 (timestamptz round-trip): verified — `audit_log.ts` is `timestamptz`.
+  - Key order / `?? null` / hash encoding / SQL binding: all confirmed
+    no-divergence by the reviewer.
+  - **Empirical finding (mine, while verifying H1): two concurrent PGlite
+    backends on one dataDir do NOT share a coherent view** (second instance
+    saw 0 of the first's rows — silent divergence, corruption risk). This is
+    stricter than the plan's "stale reads" note. Fix: `scripts/admin-user.mjs`
+    now **refuses to run while `postmaster.pid` exists** in the PGlite dataDir
+    (i.e. while the app is up), with `--force` for a stale lock after a crash;
+    skipped on the Neon path where concurrent use is safe. Also fixed:
+    `fail()` used `process.exit(1)`, skipping `closeDb()` and leaking the
+    lock — it now throws `CliError`, main() catches it, closes the DB, then
+    sets `exitCode`. Covered by a new test (10/10 in
+    `scripts/phase3-admin.test.mjs`).
+- Raw reviews: `/tmp/p3-brief{1,2,3}.txt` (briefs); findings above are the
+  dispositions.
 
 ### Phase 4 — kiosk pairing — DEFERRED (Connor's 2026-09-25 call: "defer four")
 Kiosk pairing (apiKey plugin devices, `/kiosk/pair` flow, revocation) is NOT

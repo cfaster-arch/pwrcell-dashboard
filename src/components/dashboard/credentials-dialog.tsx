@@ -117,6 +117,12 @@ export function CredentialsDialog({
   }
 
   async function disconnect() {
+    if (
+      !window.confirm(
+        "Remove the stored PWRview login? The dashboard will fall back to simulated data until you sign in again.",
+      )
+    )
+      return;
     setBusy(true);
     setError(null);
     setLiveError(null);

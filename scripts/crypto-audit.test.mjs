@@ -50,7 +50,14 @@ const shimSource = [
   "}",
   "export async function getSql() {",
   "  const db = await getPg();",
-  "  return toSql(async (text, params) => (await db.query(text, params)).rows);",
+  "  const sql = toSql(async (text, params) => (await db.query(text, params)).rows);",
+  "  sql.transaction = async (fn) => {",
+  "    return db.transaction(async (ptx) => {",
+  "      const tx = toSql(async (text, params) => (await ptx.query(text, params)).rows);",
+  "      return fn(tx);",
+  "    });",
+  "  };",
+  "  return sql;",
   "}",
   "",
 ].join("\n");
@@ -225,6 +232,10 @@ test("audit: AUDIT_ACTIONS covers the required set", () => {
     KIOSK_PAIRED: "kiosk.paired",
     KIOSK_REVOKED: "kiosk.revoked",
     KIOSK_PAIR_CODE_CREATED: "kiosk.pair_code_created",
+    ADMIN_API_CALL: "admin.api_call",
+    SESSION_REVOKED: "session.revoked",
+    USER_ENABLED: "user.enabled",
+    AUDIT_EXPORTED: "audit.exported",
     SECURITY_CROSS_ORG_DENIED: "security.cross_org_denied",
   });
 });
@@ -233,7 +244,7 @@ test("audit: verifyAuditChain passes on an empty table", async () => {
   await sql.query(AUDIT_DDL);
   await sql.query("delete from audit_log");
   const v = await audit.verifyAuditChain();
-  assert.deepEqual(v, { ok: true, checked: 0 });
+  assert.deepEqual(v, { ok: true, checked: 0, reachedGenesis: true });
 });
 
 test("audit: events append with a hash chain; verification passes", async () => {
@@ -264,11 +275,11 @@ test("audit: events append with a hash chain; verification passes", async () => 
   assert.equal(rows[2].actor_type, "kiosk");
 
   const v = await audit.verifyAuditChain();
-  assert.deepEqual(v, { ok: true, checked: 3 });
+  assert.deepEqual(v, { ok: true, checked: 3, reachedGenesis: true });
 
   // Windowed verification uses the anchor row before the window.
   const w = await audit.verifyAuditChain(2);
-  assert.deepEqual(w, { ok: true, checked: 2 });
+  assert.deepEqual(w, { ok: true, checked: 2, reachedGenesis: false });
 });
 
 test("audit: verifyAuditChain detects a tampered action field", async () => {
