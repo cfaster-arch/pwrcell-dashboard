@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireSessionApi } from "@/lib/authn/guard.server";
+import { requireOrgApi, requireOrgManager } from "@/lib/authn/guard.server";
 import {
   discoverCameras,
+  orgStreamNames,
   ringAuthStart,
   ringAuthVerify,
   ringDisconnect,
@@ -13,6 +14,7 @@ import {
   saveCameraSettings,
   saveDiscovered,
 } from "@/lib/ring/ring-store.server";
+import { auditEvent, AUDIT_ACTIONS } from "@/lib/authn/audit.server";
 
 const noStore = { "cache-control": "no-store" };
 
@@ -34,20 +36,41 @@ type ActionBody = {
   code?: unknown;
 } & Record<string, unknown>;
 
+function clientIp(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    ""
+  );
+}
+
 export const Route = createFileRoute("/api/ring")({
   server: {
     handlers: {
-      GET: async () => {
-        const authz = await requireSessionApi();
+      GET: async ({ request }) => {
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         const [status, settings] = await Promise.all([
-          ringStatus(),
-          Promise.resolve(loadCameraSettings()),
+          ringStatus(authz.orgId),
+          loadCameraSettings(authz.orgId),
         ]);
-        return Response.json({ ...status, settings }, { headers: noStore });
+        // The browser only ever sees the org's own stream names; internal
+        // namespacing stays server-side.
+        const [cam1Stream, cam2Stream] = orgStreamNames(authz.orgId);
+        return Response.json(
+          {
+            ...status,
+            settings: {
+              ...settings,
+              cam1: settings.cam1 ? { ...settings.cam1, stream: cam1Stream } : null,
+              cam2: settings.cam2 ? { ...settings.cam2, stream: cam2Stream } : null,
+            },
+          },
+          { headers: noStore },
+        );
       },
       POST: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         let body: ActionBody = {};
         try {
@@ -57,6 +80,10 @@ export const Route = createFileRoute("/api/ring")({
         }
         const action = String(body.action ?? "");
         try {
+          if (action === "auth-start" || action === "auth-verify" || action === "disconnect") {
+            const mgr = await requireOrgManager(authz.orgId);
+            if (mgr instanceof Response) return mgr;
+          }
           if (action === "auth-start") {
             if (authRateLimited()) {
               return Response.json(
@@ -72,10 +99,10 @@ export const Route = createFileRoute("/api/ring")({
                 { status: 400, headers: noStore },
               );
             }
-            const r = await ringAuthStart(email, password);
+            const r = await ringAuthStart(authz.orgId, authz.ctx.user.id, email, password);
             if (!r.need2fa) {
-              const cams = await discoverCameras();
-              saveDiscovered(cams);
+              const cams = await discoverCameras(authz.orgId);
+              await saveDiscovered(authz.orgId, cams);
               await syncBridge();
               return Response.json(
                 { need2fa: false, cameras: cams },
@@ -92,20 +119,45 @@ export const Route = createFileRoute("/api/ring")({
                 { status: 400, headers: noStore },
               );
             }
-            const cameras = await ringAuthVerify(code);
+            const cameras = await ringAuthVerify(authz.orgId, authz.ctx.user.id, code);
+            await auditEvent({
+              actorUserId: authz.ctx.user.id,
+              actorType: "user",
+              action: AUDIT_ACTIONS.RING_CONNECTED,
+              targetType: "organization",
+              targetId: authz.orgId,
+              orgId: authz.orgId,
+              ip: clientIp(request),
+            }).catch(() => {});
             return Response.json({ ok: true, cameras }, { headers: noStore });
           }
           if (action === "rediscover") {
-            const cameras = await discoverCameras();
-            const settings = saveDiscovered(cameras);
+            const mgr = await requireOrgManager(authz.orgId);
+            if (mgr instanceof Response) return mgr;
+            const cameras = await discoverCameras(authz.orgId);
+            const settings = await saveDiscovered(authz.orgId, cameras);
             return Response.json({ cameras, settings }, { headers: noStore });
           }
           if (action === "sync") {
+            // Manager-gated: rebuilding the shared bridge restarts every
+            // org's streams, so it must not be triggerable by any member
+            // (security review 2026-09-25 R3.7).
+            const mgr = await requireOrgManager(authz.orgId);
+            if (mgr instanceof Response) return mgr;
             await syncBridge();
             return Response.json({ ok: true }, { headers: noStore });
           }
           if (action === "disconnect") {
-            await ringDisconnect();
+            await ringDisconnect(authz.orgId);
+            await auditEvent({
+              actorUserId: authz.ctx.user.id,
+              actorType: "user",
+              action: AUDIT_ACTIONS.RING_DISCONNECTED,
+              targetType: "organization",
+              targetId: authz.orgId,
+              orgId: authz.orgId,
+              ip: clientIp(request),
+            }).catch(() => {});
             return Response.json({ ok: true }, { headers: noStore });
           }
           return Response.json(
@@ -120,8 +172,10 @@ export const Route = createFileRoute("/api/ring")({
         }
       },
       PUT: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
+        const mgr = await requireOrgManager(authz.orgId);
+        if (mgr instanceof Response) return mgr;
         let body: Record<string, unknown> = {};
         try {
           body = (await request.json()) as Record<string, unknown>;
@@ -129,7 +183,7 @@ export const Route = createFileRoute("/api/ring")({
           body = {};
         }
         try {
-          const settings = saveCameraSettings({
+          const settings = await saveCameraSettings(authz.orgId, {
             enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
             cam1: "cam1" in body ? body.cam1 : undefined,
             cam2: "cam2" in body ? body.cam2 : undefined,

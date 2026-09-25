@@ -1,5 +1,12 @@
+/**
+ * Display settings (Phase 2: per-organization).
+ *
+ * Settings live in the org_settings "display" section. Background images are
+ * per-org files (display-background-<org>.<ext>) in the app working dir.
+ */
 import fs from "node:fs";
 import path from "node:path";
+import { getOrgSection, setOrgSection } from "@/lib/org-settings.server";
 import {
   DEFAULT_DISPLAY_SETTINGS,
   type BackgroundMode,
@@ -9,7 +16,6 @@ import {
   type ThemeName,
 } from "./display-settings";
 
-const SETTINGS_FILE = path.resolve(process.cwd(), "display-settings.json");
 const BG_PREFIX = path.resolve(process.cwd(), "display-background");
 
 const IMAGE_EXT: Record<string, string> = {
@@ -19,7 +25,12 @@ const IMAGE_EXT: Record<string, string> = {
   "image/gif": ".gif",
 };
 
-function sanitize(raw: unknown): DisplaySettings {
+/** Filenames must not escape the working dir — org ids are slug-safe but be strict anyway. */
+function safeOrg(orgId: string): string {
+  return orgId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "org";
+}
+
+function sanitize(raw: unknown, orgId?: string): DisplaySettings {
   const r = (raw ?? {}) as Partial<DisplaySettings>;
   const theme: ThemeName = r.theme === "light" ? "light" : "dark";
   const gaugeStyle: GaugeStyle = r.gaugeStyle === "tiles" ? "tiles" : "analog";
@@ -47,7 +58,7 @@ function sanitize(raw: unknown): DisplaySettings {
     gaugeStyle: displayMode === "tiles" ? "tiles" : "analog",
     backgroundMode,
     backgroundColor,
-    hasBackgroundImage: findBackgroundFile() !== null,
+    hasBackgroundImage: orgId ? findBackgroundFile(orgId) !== null : false,
     nightDim: r.nightDim !== false,
     setupComplete: r.setupComplete === true,
     showRates: r.showRates !== false,
@@ -57,29 +68,33 @@ function sanitize(raw: unknown): DisplaySettings {
   return s;
 }
 
-export function loadDisplaySettings(): DisplaySettings {
-  try {
-    const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8")) as unknown;
-    return sanitize(raw);
-  } catch {
-    return sanitize(null);
-  }
+/** Defaults for contexts with no organization (e.g. the signed-out root shell). */
+export function loadDisplayDefaults(): DisplaySettings {
+  return sanitize(null);
 }
 
-export function saveDisplaySettings(patch: Partial<DisplaySettings>): DisplaySettings {
-  const next = sanitize({ ...loadDisplaySettings(), ...patch, hasBackgroundImage: undefined });
+export async function loadDisplaySettings(orgId: string): Promise<DisplaySettings> {
+  const raw = await getOrgSection(orgId, "display");
+  return sanitize(raw, orgId);
+}
+
+export async function saveDisplaySettings(
+  orgId: string,
+  patch: Partial<DisplaySettings>,
+): Promise<DisplaySettings> {
+  const current = await loadDisplaySettings(orgId);
+  const next = sanitize({ ...current, ...patch, hasBackgroundImage: undefined }, orgId);
   const { hasBackgroundImage: _ignored, ...persisted } = next;
-  try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(persisted, null, 2) + "\n", "utf8");
-  } catch {
-    // Best effort: a read-only FS keeps running with in-memory values for this tick.
-  }
+  await setOrgSection(orgId, "display", persisted);
   return next;
 }
 
-function findBackgroundFile(): string | null {
-  for (const ext of Object.values(IMAGE_EXT)) {
-    const p = BG_PREFIX + ext;
+function backgroundCandidates(orgId: string): string[] {
+  return Object.values(IMAGE_EXT).map((ext) => `${BG_PREFIX}-${safeOrg(orgId)}${ext}`);
+}
+
+function findBackgroundFile(orgId: string): string | null {
+  for (const p of backgroundCandidates(orgId)) {
     try {
       if (fs.statSync(p).isFile()) return p;
     } catch {
@@ -89,18 +104,33 @@ function findBackgroundFile(): string | null {
   return null;
 }
 
-export function getBackgroundFile(): { path: string; contentType: string } | null {
-  const found = findBackgroundFile();
+/** Remove every background file for an org (used by org deletion). */
+export function deleteOrgBackgroundFiles(orgId: string): void {
+  for (const p of backgroundCandidates(orgId)) {
+    try {
+      fs.unlinkSync(p);
+    } catch {
+      /* not present */
+    }
+  }
+}
+
+export function getBackgroundFile(orgId: string): { path: string; contentType: string } | null {
+  const found = findBackgroundFile(orgId);
   if (!found) return null;
   const ext = path.extname(found);
   const entry = Object.entries(IMAGE_EXT).find(([, e]) => e === ext);
   return { path: found, contentType: entry ? entry[0] : "application/octet-stream" };
 }
 
-export function saveBackgroundImage(data: Buffer, contentType: string): DisplaySettings {
+export async function saveBackgroundImage(
+  orgId: string,
+  data: Buffer,
+  contentType: string,
+): Promise<DisplaySettings> {
   const ext = IMAGE_EXT[contentType] ?? null;
   if (!ext) throw new Error("Unsupported image type.");
-  const old = findBackgroundFile();
+  const old = findBackgroundFile(orgId);
   if (old) {
     try {
       fs.unlinkSync(old);
@@ -108,12 +138,12 @@ export function saveBackgroundImage(data: Buffer, contentType: string): DisplayS
       /* ignore */
     }
   }
-  fs.writeFileSync(BG_PREFIX + ext, data);
-  return saveDisplaySettings({ backgroundMode: "image" });
+  fs.writeFileSync(`${BG_PREFIX}-${safeOrg(orgId)}${ext}`, data);
+  return saveDisplaySettings(orgId, { backgroundMode: "image" });
 }
 
-export function deleteBackgroundImage(): DisplaySettings {
-  const old = findBackgroundFile();
+export async function deleteBackgroundImage(orgId: string): Promise<DisplaySettings> {
+  const old = findBackgroundFile(orgId);
   if (old) {
     try {
       fs.unlinkSync(old);
@@ -121,8 +151,8 @@ export function deleteBackgroundImage(): DisplaySettings {
       /* ignore */
     }
   }
-  const current = loadDisplaySettings();
-  return saveDisplaySettings({
+  const current = await loadDisplaySettings(orgId);
+  return saveDisplaySettings(orgId, {
     backgroundMode: current.backgroundMode === "image" ? "default" : current.backgroundMode,
   });
 }

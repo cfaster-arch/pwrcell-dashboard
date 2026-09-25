@@ -26,12 +26,14 @@ const loadMetric = createServerFn({ method: "GET" })
   .validator((d: { metric: string }) => d)
   .handler(async ({ data }) => {
     if (!VALID.has(data.metric)) throw notFound();
+    const { requireOrgServerFn } = await import("@/lib/authn/guard.server");
+    const { orgId } = await requireOrgServerFn();
     const { getLivePayload, getSeriesPayload } = await import("@/lib/pwrcell/poller.server");
     const { loadDisplaySettings } = await import("@/lib/display-settings.server");
     const [live, series, settings] = await Promise.all([
-      getLivePayload(),
-      getSeriesPayload(720),
-      loadDisplaySettings(),
+      getLivePayload(orgId),
+      getSeriesPayload(orgId, 720),
+      loadDisplaySettings(orgId),
     ]);
     return { live, series, settings };
   });
@@ -89,12 +91,12 @@ function MetricView({
         setLive(nextLive);
         if (historyKey) {
           // Long range: DB-backed history (one sample/min, two-year retention).
-          const tz = nextLive.point?.timezone || "America/Los_Angeles";
+          // Day bucketing uses the org's timezone server-side; no tz param.
           const body = await fetchJson<{
             points: HistoryPoint[];
             days: DayAggregate[];
             bucketSeconds: number;
-          }>(`/api/history?range=${historyKey}&tz=${encodeURIComponent(tz)}`);
+          }>(`/api/history?range=${historyKey}`);
           if (cancelled) return;
           setPoints(body.points);
           setDays(body.days);

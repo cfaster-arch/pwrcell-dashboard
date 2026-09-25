@@ -59,8 +59,8 @@ export function CamerasSection() {
 
   const { cam1, cam2 } = data.settings;
   const cams: { slot: CameraSlot; stream: string; key: "cam1" | "cam2" }[] = [];
-  if (cam1) cams.push({ slot: cam1, stream: "cam1", key: "cam1" });
-  if (cam2) cams.push({ slot: cam2, stream: "cam2", key: "cam2" });
+  if (cam1) cams.push({ slot: cam1, stream: cam1.stream ?? "cam1", key: "cam1" });
+  if (cam2) cams.push({ slot: cam2, stream: cam2.stream ?? "cam2", key: "cam2" });
 
   if (cams.length === 0) {
     return (

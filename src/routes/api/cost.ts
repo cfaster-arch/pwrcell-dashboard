@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireSessionApi } from "@/lib/authn/guard.server";
+import { requireOrgApi } from "@/lib/authn/guard.server";
+import { getOrgTimezone } from "@/lib/orgs.server";
 import { getSql } from "@/lib/db";
 import { loadTouSettings, timeToMinutes } from "@/lib/tou-settings.server";
 import { seasonForMonth } from "@/lib/tou-types";
@@ -71,11 +72,13 @@ export const Route = createFileRoute("/api/cost")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         const url = new URL(request.url);
-        const timeZone = url.searchParams.get("tz") || "America/Los_Angeles";
-        const rates = loadTouSettings();
+        // The org's timezone is authoritative for month boundaries. A client-
+        // supplied tz is never trusted; the org admin sets the site timezone.
+        const timeZone = await getOrgTimezone(authz.orgId);
+        const rates = await loadTouSettings(authz.orgId);
 
         const now = Date.now();
         // First of the month in the site timezone.
@@ -95,10 +98,11 @@ export const Route = createFileRoute("/api/cost")({
              to_timestamp(floor(extract(epoch from ts) / 3600) * 3600) as bucket,
              avg(grid_w) as grid_w
            from energy_samples
-           where ts >= to_timestamp($1 / 1000.0) and ts < to_timestamp($2 / 1000.0)
+           where organization_id = $3
+             and ts >= to_timestamp($1 / 1000.0) and ts < to_timestamp($2 / 1000.0)
            group by bucket
            order by bucket`,
-          [monthStart, now],
+          [monthStart, now, authz.orgId],
         );
 
         const buckets: Array<{ ts: number; gridW: number }> = rows

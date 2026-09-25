@@ -30,8 +30,7 @@ export function GraphsMode({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const tz = timeZone || "America/Los_Angeles";
-    fetch(`/api/history?range=${range}&tz=${encodeURIComponent(tz)}`, { cache: "no-store" })
+    fetch(`/api/history?range=${range}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((body: { points?: HistoryChartPoint[] } | null) => {
         if (!cancelled) {

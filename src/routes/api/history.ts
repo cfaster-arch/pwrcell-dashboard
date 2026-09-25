@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireSessionApi } from "@/lib/authn/guard.server";
+import { requireOrgApi } from "@/lib/authn/guard.server";
+import { getOrgTimezone } from "@/lib/orgs.server";
 import { getSql } from "@/lib/db";
 
 export type HistoryRange = "24h" | "7d" | "30d" | "365d";
@@ -133,13 +134,16 @@ export const Route = createFileRoute("/api/history")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         const url = new URL(request.url);
         const q = url.searchParams.get("range");
         const range: HistoryRange =
           q === "7d" || q === "30d" || q === "365d" ? q : "24h";
-        const timeZone = url.searchParams.get("tz") || "America/Los_Angeles";
+        // The org's timezone is authoritative for day bucketing. A client-
+        // supplied tz is never trusted (it would let any viewer shift day
+        // boundaries); the org admin sets the site timezone in settings.
+        const timeZone = await getOrgTimezone(authz.orgId);
 
         const end = Date.now();
         const start = end - RANGE_SECONDS[range] * 1000;
@@ -148,17 +152,18 @@ export const Route = createFileRoute("/api/history")({
         const sql = await getSql();
         const rows = await sql.query(
           `select
-             to_timestamp(floor(extract(epoch from ts) / $3) * $3) as bucket,
+             to_timestamp(floor(extract(epoch from ts) / $4) * $4) as bucket,
              avg(solar_w) as solar_w,
              avg(home_w) as home_w,
              avg(battery_w) as battery_w,
              avg(grid_w) as grid_w,
              avg(soc) as soc
            from energy_samples
-           where ts >= to_timestamp($1 / 1000.0) and ts < to_timestamp($2 / 1000.0)
+           where organization_id = $3
+             and ts >= to_timestamp($1 / 1000.0) and ts < to_timestamp($2 / 1000.0)
            group by bucket
            order by bucket`,
-          [start, end, bucketSec],
+          [start, end, authz.orgId, bucketSec],
         );
 
         const points: HistoryPoint[] = rows.map((r) => {

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireSessionApi } from "@/lib/authn/guard.server";
+import { requireOrgApi } from "@/lib/authn/guard.server";
 import { loadDisplaySettings, saveDisplaySettings } from "@/lib/display-settings.server";
 
 const NO_STORE = { "cache-control": "no-store" };
@@ -7,13 +7,13 @@ const NO_STORE = { "cache-control": "no-store" };
 export const Route = createFileRoute("/api/display")({
   server: {
     handlers: {
-      GET: async () => {
-        const authz = await requireSessionApi();
+      GET: async ({ request }) => {
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
-        return Response.json(loadDisplaySettings(), { headers: NO_STORE });
+        return Response.json(await loadDisplaySettings(authz.orgId), { headers: NO_STORE });
       },
       PUT: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         let body: Record<string, unknown> = {};
         try {
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/api/display")({
         if (typeof body.setupComplete === "boolean") patch.setupComplete = body.setupComplete;
         if (typeof body.showRates === "boolean") patch.showRates = body.showRates;
         if (typeof body.showCameras === "boolean") patch.showCameras = body.showCameras;
-        const next = saveDisplaySettings(patch);
+        const next = await saveDisplaySettings(authz.orgId, patch);
         return Response.json(next, { headers: NO_STORE });
       },
     },

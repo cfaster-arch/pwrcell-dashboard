@@ -88,7 +88,9 @@ export async function requirePlatformAdmin(
  * - 0 memberships → 404 Response ("no organization")
  * - no session → 401 Response
  * - >1 → session.activeOrganizationId IF it is among the memberships,
- *   otherwise the first membership (callers re-verify with requireOrgAccess).
+ *   otherwise the first membership. requireOrgApi re-verifies the resolved
+ *   org with requireOrgAccess (belt and suspenders for the multi-org
+ *   fallback — security review 2026-09-25 R1.2).
  *
  * Takes the request headers explicitly so API handlers pass what they
  * received — never a header set built elsewhere. Returns a Response the
@@ -125,6 +127,75 @@ export async function requireOrgAccess(orgId: string): Promise<SessionContext | 
     select 1 as one from member where user_id = ${ctx.user.id} and organization_id = ${orgId}`;
   if (rows.length === 0) {
     // 404, not 403 — a 403 would confirm the org exists (research §2a).
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
+  return ctx;
+}
+
+export interface OrgApiContext {
+  ctx: SessionContext;
+  orgId: string;
+}
+
+/**
+ * Standard entry point for every org-scoped /api/* route: verify the session,
+ * resolve the caller's verified organization from their membership (the
+ * request never names the org), then re-verify membership for the resolved
+ * org via requireOrgAccess — belt and suspenders against a non-deterministic
+ * multi-org fallback (security review 2026-09-25 R1.2). Returns { ctx, orgId },
+ * or a Response the handler must return as-is.
+ */
+export async function requireOrgApi(request: Request): Promise<OrgApiContext | Response> {
+  const ctx = await getSessionFromRequest();
+  if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const orgId = await getMyOrgId(request.headers);
+  if (orgId instanceof Response) return orgId;
+  const verified = await requireOrgAccess(orgId);
+  if (verified instanceof Response) return verified;
+  return { ctx: verified, orgId };
+}
+
+/**
+ * For createServerFn handlers (page loaders): resolve the caller's verified
+ * org from the request headers. Redirects to /signin when there is no
+ * session or no organization.
+ */
+export async function requireOrgServerFn(): Promise<OrgApiContext> {
+  const ctx = await getSessionFromRequest();
+  if (!ctx) throw redirect({ to: "/signin" });
+  const orgId = await getMyOrgId(getRequestHeaders());
+  if (orgId instanceof Response) throw redirect({ to: "/signin" });
+  return { ctx, orgId };
+}
+
+/**
+ * Manager check: the caller must be an owner/admin of the given org, or a
+ * platform admin (which manages every org). Used for credential and other
+ * sensitive per-org settings. 404 on denial so org existence stays hidden.
+ *
+ * Platform admins must ALSO satisfy the 12h session-freshness policy
+ * (security review 2026-09-25 R1.1) — without it, a stale admin session could
+ * still overwrite any org's credentials via this bypass.
+ */
+export async function requireOrgManager(orgId: string): Promise<SessionContext | Response> {
+  const ctx = await getSessionFromRequest();
+  if (!ctx) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (ctx.user.role === "admin") {
+    const ageMs = Date.now() - new Date(ctx.session.createdAt).getTime();
+    if (ageMs > ADMIN_SESSION_TTL_MS) {
+      return Response.json(
+        { error: "re-authenticate", message: "Admin session expired — sign in again." },
+        { status: 401 },
+      );
+    }
+    return ctx;
+  }
+  const sql = await getSql();
+  const rows = await sql<{ one: number }>`
+    select 1 as one from member
+    where user_id = ${ctx.user.id} and organization_id = ${orgId}
+      and role in ('owner', 'admin')`;
+  if (rows.length === 0) {
     return Response.json({ error: "not found" }, { status: 404 });
   }
   return ctx;

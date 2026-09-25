@@ -3,12 +3,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { Dashboard } from "@/components/dashboard/dashboard";
 
 const loadDashboard = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireOrgServerFn } = await import("@/lib/authn/guard.server");
+  const { orgId } = await requireOrgServerFn();
   const { getLivePayload, getSeriesPayload } = await import("@/lib/pwrcell/poller.server");
   const { loadDisplaySettings } = await import("@/lib/display-settings.server");
   const [live, series, settings] = await Promise.all([
-    getLivePayload(),
-    getSeriesPayload(720),
-    loadDisplaySettings(),
+    getLivePayload(orgId),
+    getSeriesPayload(orgId, 720),
+    loadDisplaySettings(orgId),
   ]);
   return { live, series, settings };
 });

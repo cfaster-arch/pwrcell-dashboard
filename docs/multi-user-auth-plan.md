@@ -116,28 +116,81 @@ no-gold-plating directive): rate-limit/throttle check-then-act races
 parallelism; sustained attacks still lock out), `getClientIp` trust depends on
 the nginx `$proxy_add_x_forwarded_for` topology (verified in setup script).
 
-### Phase 2 — Multi-tenancy (4–6 h, the meat)
-- [ ] Enable `organization()` plugin; org-per-customer model.
-- [ ] Scope the six surfaces from §2 to `organizationId`.
-- [ ] Refactor the poller to per-org instances (biggest single chunk of work).
-- [ ] Migration: existing production data → a default org owned by your admin account.
-- [ ] Verify: two test orgs, each seeing only their own live data, history, and settings.
+### Phase 2 — Multi-tenancy — implemented 2026-09-25 (branch `multi-user-plan`, commit pending)
 
-### Phase 3 — Admin panel (2–3 h)
-- [ ] Enable `admin()` plugin; build the admin UI (users list, create, disable,
-      delete, set role, password reset, session revoke) using `adminClient()`.
-- [ ] Gate `/api/auth/admin/*` — allowlist only the endpoints actually used.
-- [ ] Impersonation ships **enabled** with no audit trail by default: either add
-      audit logging or disable the endpoint.
-- [ ] No public self-signup: users are created by admins (or org-owner invites).
+Built in full (Connor's "defer four, slim three" scope). Implemented and
+reviewed; commit + push happen only after the phase boundary below is met.
 
-### Phase 4 — Kiosk pairing (~2 h)
-- [ ] `apiKey()` plugin for wall tablets — never put tokens in URLs (they persist in
-      history/logs) and never give the kiosk an admin-capable credential.
-- [ ] Pairing flow: admin panel → "pair kiosk" generates a short-lived code; tablet
-      visits `/kiosk/pair`, enters code; server validates once and sets a long-lived
-      httpOnly session cookie (`expiresIn` ~1 year, sliding `updateAge`) bound to that org.
-- [ ] Revocation from the admin panel (revoke session / delete key).
+- [x] Tenant scoping on every route/query: `requireOrgApi(request)` resolves
+      the org from the caller's membership (the request never names the org)
+      and re-verifies with `requireOrgAccess`; `requireOrgServerFn()` for
+      server functions; `requireOrgManager(orgId)` gates credential/camera/org-
+      destructive writes to owner/admin roles (platform-admin branch also
+      enforces the 12h session-freshness policy).
+- [x] Per-org encrypted PWRview credentials (`org_credentials`, AES-256-GCM,
+      AAD = org id + secret purpose via `orgAad()`) with one-time default-org
+      migration from `dashboard.env`; plaintext keys removed only after a
+      verified DB round-trip; sign-in probe validates before persisting so a
+      typo can't poison the poller. Env rewrite preserves all other lines and
+      writes atomically.
+- [x] Per-org encrypted Ring refresh tokens (`org_ring_tokens`, same
+      AAD scheme), one-time migration from `dashboard.env`.
+- [x] Per-org settings: display/alerts/TOU/camera in `org_settings` sections;
+      one-time legacy import for `org_default`; per-org background files
+      (`display-background-<org>.<ext>`), served through a restored
+      `/api/display-background` route (org-scoped, manager-gated upload).
+- [x] Per-org poller registry: per-org GeneracClient/credentials, token state,
+      history buffer, home id, errors, timer, inflight; simple retries;
+      `resetOrgAuth`/`resetOrgToDemo`/`stopOrgPoller`.
+- [x] Per-org energy history + alerts; history/cost SQL filtered by
+      `organization_id`; the org's timezone is authoritative for bucketing
+      (client `tz` param removed — never trusted).
+- [x] Ring multi-org: pending-2FA map keyed by org+user; one shared go2rtc
+      bridge aggregating per-org streams with hash-namespaced names
+      (`org_<16 hex of sha256(orgId)>__cam1/cam2`) and per-stream refresh
+      tokens; `/api/rtc/*` validates `src` against the caller's org (single
+      `src` only, required for stream endpoints), strips session headers, and
+      filters `api/streams`; bridge mutations serialized, config written
+      atomically with 0600; `sync` action manager-gated; disconnecting one org
+      drops only its streams.
+- [x] `src/lib/orgs.server.ts`: `createOrg`/`deleteOrg` — full cascade in ONE
+      DB transaction (member/invitation deletes, orphaned kiosk apikey cleanup,
+      org row with FK cascades for settings/credentials/ring tokens/energy/
+      alerts/kiosk/pairing, audit row in the same tx); poller stop,
+      background-file removal, and bridge re-sync outside the tx (best-effort).
+      `audit_log` is append-only and survives.
+- [x] Migration `0006_org_delete_cascade.sql`: member/invitation FKs upgraded
+      to `ON DELETE CASCADE` (0004 used inline references = NO ACTION);
+      idempotent and schema-qualified.
+- [x] Audit actions added: `credentials.set/cleared`, `ring.connected/disconnected`.
+- [x] Two-org isolation tests (`scripts/phase2-isolation.test.mjs`, 9 tests):
+      cross-org route/query denial, credential/settings/history/alerts
+      isolation, AES-GCM wrong-org AND wrong-purpose AAD failure, hash-based
+      Ring stream namespacing, complete deletion cascade — all passing.
+- [x] Gates: typecheck + production build green. Full suite: 218/224 — the 6
+      failures are pre-existing Grok PWA/plugin tests that fail identically on
+      the untouched Phase 1 baseline (verified on a pristine `7cd95a2`
+      worktree); documented as baseline failures, not Phase 2 regressions.
+- [x] DeepSeek security review: V4 **Flash** substituted — V4 Pro repeatedly
+      returned empty answers (`finish_reason=length`, reasoning loop) on three
+      attempts incl. a narrowed reframe; same substitution as Phase 1.
+      3 focused briefs (authz / crypto+cascade / bridge+proxy). Findings and
+      dispositions in the build log (§7 below).
+
+### Phase 3 — slim (Connor's 2026-09-25 scope: "slim three")
+No polished/full admin panel. Minimal viable admin surface:
+- [ ] Minimal seed/CLI user management (create/disable users, reset passwords).
+- [ ] Immediate session revocation (already works via `cookieCache: false`; needs
+      a minimal operator path to trigger it).
+- [ ] Append-only admin audit logging (already append-only via `audit_log` +
+      hash chain; add the minimal review/export path).
+- [ ] Confirmation for destructive actions wherever UI exists.
+
+### Phase 4 — kiosk pairing — DEFERRED (Connor's 2026-09-25 call: "defer four")
+Kiosk pairing (apiKey plugin devices, `/kiosk/pair` flow, revocation) is NOT
+built now. The schema for it (`kiosk_devices`, `pairing_codes`, `apikey`)
+exists from Phase 1 migrations and stays inert; `deleteOrg` already cleans up
+kiosk rows/keys. Revisit when a wall tablet actually needs pairing.
 
 **Total estimate: ~12–17 h → 2–3 focused days.**
 
@@ -193,3 +246,58 @@ sign-in → org scoping → kiosk pairing flow:
 - **Phase 0**: `src/lib/db.ts` already had persistent `dataDir` and the
   `DATABASE_URL` escape hatch — only graceful shutdown (`closeDb()` +
   SIGTERM/SIGINT handlers) was added. No schema changes.
+
+- **Phase 2 security review (2026-09-25)**: DeepSeek V4 **Flash** — V4 Pro
+  returned empty answers (`finish_reason=length`, reasoning loop) on three
+  attempts including a narrowed reframe, so Flash was substituted per the
+  Phase 1 precedent. Three focused briefs: (1) authorization layer
+  (`guard.server.ts`, `/api/credentials`), (2) credential encryption + org
+  deletion (crypto core, `org-credentials`, `orgs.deleteOrg`, migration 0006),
+  (3) camera bridge + proxy (`rtc.$.ts`, `ring-api.server.ts`). Full briefs
+  and raw reviews: `~/workspace/deepseek-reviews/`.
+  - **Fixed**: R1.1 (12h admin session freshness now enforced in
+    `requireOrgManager`'s platform-admin branch); R1.2 (`requireOrgApi`
+    re-verifies the resolved org via `requireOrgAccess`); R2.1 (`deleteOrg`
+    DB steps + audit row in one transaction — new `Sql.transaction()`
+    on both Neon and PGlite backends); R2.3 (AAD now binds org id AND
+    secret purpose via `orgAad()`; new wrong-purpose test); R2.5 (legacy
+    env rewrite preserves all other lines, atomic temp+rename write);
+    R2.8 (`legacyMigrated` flag set only after verified success); R2.10
+    (audit row written inside the delete transaction via `auditEvent(e,
+    tx)`); R2.11 (0006 idempotent, schema-qualified); R3.2 (stream
+    namespace is `sha256(orgId)` hex, not a lossy sanitization —
+    collisions impossible); R3.3 (`syncBridge` serialized through an
+    in-process mutex; go2rtc.yaml written atomically, chmod 0600 every
+    write); R3.4 (proxy rebuilds query from a whitelist — single `src`
+    only, required for stream endpoints; strips cookie/authorization/
+    x-forwarded-*; `redirect: "manual"`); R3.5 (pending 2FA keyed by
+    org+user); R3.7 (`sync` action manager-gated). Also: client `tz`
+    param removed — org timezone is authoritative for history/cost
+    bucketing, never client-supplied.
+  - **Already satisfied, no change**: R2.4 (public encrypt APIs already
+    call `checkAad`); R2.6 (routes already resolve org via `requireOrgApi`
+    — added a doc note that AAD is integrity, not authorization); R2.7
+    (all child FKs verified `ON DELETE CASCADE` in 0004 + cascade
+    covered by the isolation test); R3.1 (go2rtc.yaml already 0600 since
+    the original Ring integration; residual plaintext-token risk
+    documented — tokens must be present for go2rtc's ring source, file
+    is 0600, backups encrypted, single-tenant VPS).
+  - **Reasoned dismissals**: R1.3 (platform-admin cross-org via
+    `requireOrgApi` is unreachable — the safer default; the admin branch
+    still upgrades admin-members, so it stays); R1.4 (GET
+    `/api/credentials` returns email/meta only, no secret — members need
+    connection state for the UI); R2.2 (FK direction is
+    kiosk_devices→apikey `ON DELETE CASCADE`, so deleting apikey rows
+    first is safe — confirmed by the passing cascade test); R2.9
+    (`deleteOrgBackgroundFiles` is sync and best-effort by design; a
+    leftover image is not a secret leak). Bridge-init global boolean:
+    kept — the aggregate bridge syncs ALL orgs in one pass, so init is
+    inherently global; the new mutex removes the race. Browser-visible
+    stream names: kept namespaced (now opaque hashes, server-validated)
+    instead of local cam1/cam2 + server translation — translation would
+    add complexity with no security benefit.
+  - **Baseline failures (not Phase 2 regressions)**: 6 Grok PWA/plugin
+    tests fail identically on the pristine `7cd95a2` worktree
+    (og:title injector expectations vs this repo's "PWRcell" site
+    identity — Grok template tests vs a customized repo). Full suite:
+    218/224; isolation: 9/9; typecheck + production build green.

@@ -55,16 +55,14 @@ export async function ensureBinary(): Promise<string> {
 }
 
 export interface BridgeStream {
-  /** Stable local name, e.g. "cam1". */
+  /** Stable local name, e.g. "org_default__cam1" (namespaced per org). */
   name: string;
   deviceId: string | number;
+  /** Ring refresh token of the org that owns this stream. */
+  refreshToken: string;
 }
 
-function buildConfig(
-  streams: BridgeStream[],
-  refreshToken: string,
-  publicIp: string,
-): string {
+function buildConfig(streams: BridgeStream[], publicIp: string): string {
   const lines = [
     "# Managed by pwrcell-dashboard — manual edits will be overwritten.",
     "api:",
@@ -78,7 +76,7 @@ function buildConfig(
   for (const s of streams) {
     // Single-quoted YAML scalar: refresh tokens are base64url, never contain "'".
     lines.push(
-      `  ${s.name}: 'ring:?device_id=${s.deviceId}&refresh_token=${refreshToken}'`,
+      `  ${s.name}: 'ring:?device_id=${s.deviceId}&refresh_token=${s.refreshToken}'`,
     );
   }
   return lines.join("\n") + "\n";
@@ -146,18 +144,21 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * (Re)start the bridge with the given streams. Only restarts go2rtc when the
  * config actually changed, so saving unrelated settings doesn't drop streams.
  */
-export async function startBridge(
-  streams: BridgeStream[],
-  refreshToken: string,
-): Promise<void> {
+export async function startBridge(streams: BridgeStream[]): Promise<void> {
   wantRunning = true;
   await ensureBinary();
   const ip = await publicIp().catch(() => "127.0.0.1");
-  const cfg = buildConfig(streams, refreshToken, ip);
+  const cfg = buildConfig(streams, ip);
   if (cfg !== lastConfig) {
     lastConfig = cfg;
     fs.mkdirSync(DIR, { recursive: true });
-    fs.writeFileSync(CONF, cfg, { mode: 0o600 });
+    // Atomic replace (temp + rename) so a concurrent/failed write can't leave
+    // go2rtc reading a truncated config; chmod every time because writeFileSync
+    // mode only applies at creation (security review 2026-09-25 R3.1/R3.3).
+    const tmp = `${CONF}.tmp-${process.pid}`;
+    fs.writeFileSync(tmp, cfg, { mode: 0o600 });
+    fs.renameSync(tmp, CONF);
+    try { fs.chmodSync(CONF, 0o600); } catch { /* best effort */ }
     await stopBridge();
     wantRunning = true;
     await ensureUdpOpen().catch(() => false);

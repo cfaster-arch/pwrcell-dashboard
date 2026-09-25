@@ -1,5 +1,10 @@
 import { env } from "@/lib/env.server";
-import { getCredentials } from "./credentials.server";
+
+/** PWRview credentials supplied by the caller (decrypted per-org credentials). */
+export interface GeneracCredentials {
+  email: string;
+  password: string;
+}
 
 const CLIENT_ID = "1im6pfcmq8oo8db7usd8kjrgkk";
 const CLIENT_SECRET = "bpbuhh5u8atmuekq4rh4l8bhnig5cqd2el66tkfmp60gs3sd62f";
@@ -16,12 +21,11 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 20_000;
 
 export class AuthError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-  ) {
+  readonly status?: number;
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "AuthError";
+    this.status = status;
   }
 }
 
@@ -31,10 +35,6 @@ function basicAuthHeader(): string {
 
 export function apiBase(): string {
   return (env("GENERAC_API_BASE") ?? "https://generac-api.neur.io").replace(/\/$/, "");
-}
-
-export function hasCredentials(): boolean {
-  return getCredentials() !== null;
 }
 
 function readJson(text: string): unknown {
@@ -93,25 +93,25 @@ export class GeneracClient {
     this.expiresAt = 0;
   }
 
-  async fetchHomes(): Promise<unknown> {
-    return this.authedGet(`${apiBase()}/live/v1/homes`);
+  async fetchHomes(creds: GeneracCredentials): Promise<unknown> {
+    return this.authedGet(`${apiBase()}/live/v1/homes`, creds);
   }
 
-  async fetchTelemetry(homeId: string, fromIso: string): Promise<unknown> {
+  async fetchTelemetry(homeId: string, fromIso: string, creds: GeneracCredentials): Promise<unknown> {
     const url = `${apiBase()}/live/v2/homes/${encodeURIComponent(homeId)}/telemetry?fromIso=${encodeURIComponent(fromIso)}`;
-    return this.authedGet(url);
+    return this.authedGet(url, creds);
   }
 
-  private async authedGet(url: string, retried = false): Promise<unknown> {
-    const token = await this.ensureIdToken();
+  private async authedGet(url: string, creds: GeneracCredentials, retried = false): Promise<unknown> {
+    const token = await this.ensureIdToken(creds);
     const res = await this.rawFetch(url, {
       method: "GET",
       headers: { ...APP_HEADERS, Authorization: `Bearer ${token}` },
     });
     if (res.status === 401 && !retried) {
       this.clearTokens();
-      await this.signIn();
-      return this.authedGet(url, true);
+      await this.signIn(creds.email, creds.password);
+      return this.authedGet(url, creds, true);
     }
     const text = await res.text();
     const body = readJson(text);
@@ -124,16 +124,16 @@ export class GeneracClient {
     return body;
   }
 
-  private async ensureIdToken(): Promise<string> {
+  private async ensureIdToken(creds: GeneracCredentials): Promise<string> {
     if (this.tokenValid && this.idToken) return this.idToken;
     if (this.inflightAuth) return this.inflightAuth;
-    this.inflightAuth = this.authenticate().finally(() => {
+    this.inflightAuth = this.authenticate(creds).finally(() => {
       this.inflightAuth = null;
     });
     return this.inflightAuth;
   }
 
-  private async authenticate(): Promise<string> {
+  private async authenticate(creds: GeneracCredentials): Promise<string> {
     if (this.refreshToken && this.userId) {
       try {
         await this.refresh();
@@ -144,17 +144,14 @@ export class GeneracClient {
         console.warn("[pwrcell] token refresh failed, signing in again:", msg);
       }
     }
-    await this.signIn();
+    await this.signIn(creds.email, creds.password);
     if (!this.idToken) throw new AuthError("Sign-in returned no id_token");
     return this.idToken;
   }
 
-  private async signIn(): Promise<void> {
-    const creds = getCredentials();
-    const email = creds?.email;
-    const password = creds?.password;
+  private async signIn(email: string, password: string): Promise<void> {
     if (!email || !password) {
-      throw new AuthError("GENERAC_EMAIL and GENERAC_PASSWORD are not set");
+      throw new AuthError("PWRview email and password are not configured for this organization");
     }
     const res = await this.rawFetch(`${apiBase()}/sessions/v1/signin`, {
       method: "POST",
@@ -219,4 +216,8 @@ export class GeneracClient {
   }
 }
 
-export const generac = new GeneracClient();
+/** Test the given credentials against Generac without storing anything. */
+export async function probeCredentials(email: string, password: string): Promise<void> {
+  const client = new GeneracClient();
+  await client.fetchHomes({ email, password });
+}

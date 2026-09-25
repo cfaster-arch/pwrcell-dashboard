@@ -56,9 +56,24 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
   assert.deepEqual(pendingMigrations(["auth", "README.md"], []), []);
 });
 
-test("the auth schema ships outside the globbed directory", () => {
+test("the shipped migrations are globbed; the auth/ subdirectory stays out", () => {
+  // Template-era note: this repo DOES ship top-level migrations (0002+), so
+  // the old "migrations dir is empty" expectation no longer holds. What must
+  // stay true: readdir's "auth" entry is dropped by isMigrationFile, and the
+  // real migrations are returned in name order as pending.
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  const pending = pendingMigrations(
+    readdirSync(migrationsDir).map((f) => join(migrationsDir, f)),
+    [],
+  );
+  const names = pending.map((p) => p.name);
+  assert.deepEqual(names, [...names].sort(), "pending migrations come back in name order");
+  assert.ok(names.includes("0002_energy_history.sql"));
+  assert.ok(names.includes("0006_org_delete_cascade.sql"));
+  assert.ok(
+    !names.some((n) => n.startsWith("auth")),
+    "migrations/auth/* is opt-in and must not be globbed",
+  );
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 

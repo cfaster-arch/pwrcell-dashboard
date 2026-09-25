@@ -1,11 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
+import { getOrgSection, setOrgSection } from "@/lib/org-settings.server";
 import { DEFAULT_TOU_SETTINGS, type TouSettings } from "./tou-types";
 
 export { DEFAULT_TOU_SETTINGS };
 export type { TouSettings };
-
-const SETTINGS_FILE = path.resolve(process.cwd(), "tou-settings.json");
 
 function validTime(v: unknown): v is string {
   return typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
@@ -43,21 +40,15 @@ function sanitize(raw: unknown): TouSettings {
   };
 }
 
-export function loadTouSettings(): TouSettings {
-  try {
-    return sanitize(JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8")) as unknown);
-  } catch {
-    return sanitize(null);
-  }
+export async function loadTouSettings(orgId: string): Promise<TouSettings> {
+  const raw = await getOrgSection(orgId, "tou");
+  return sanitize(raw);
 }
 
-export function saveTouSettings(patch: Partial<TouSettings>): TouSettings {
-  const merged = sanitize({ ...loadTouSettings(), ...patch });
-  try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(merged, null, 2) + "\n", "utf8");
-  } catch {
-    /* best effort */
-  }
+export async function saveTouSettings(orgId: string, patch: Partial<TouSettings>): Promise<TouSettings> {
+  const current = await loadTouSettings(orgId);
+  const merged = sanitize({ ...current, ...patch });
+  await setOrgSection(orgId, "tou", merged);
   return merged;
 }
 

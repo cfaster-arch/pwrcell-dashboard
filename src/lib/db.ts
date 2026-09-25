@@ -35,6 +35,13 @@ export interface Sql {
     text: string,
     params?: unknown[],
   ): Promise<T[]>;
+  /**
+   * Run `fn` inside a single database transaction (one connection). All
+   * queries through the `tx` handle commit or roll back together. Nested
+   * `tx.transaction()` calls run inline on the same transaction.
+   * Added for the org-deletion cascade (security review 2026-09-25 R2.1).
+   */
+  transaction<T>(fn: (tx: Sql) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -68,9 +75,10 @@ const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
+type Transact = <T>(fn: (tx: Sql) => Promise<T>) => Promise<T>;
 
-/** Wrap a query runner in the tagged-template + `.query()` `Sql` surface. */
-function toSql(run: Run): Sql {
+/** Wrap a query runner in the tagged-template + `.query()` + `.transaction()` `Sql` surface. */
+function toSql(run: Run, transact: Transact): Sql {
   const sql = (async <T = Record<string, unknown>>(
     strings: TemplateStringsArray,
     ...values: unknown[]
@@ -82,6 +90,7 @@ function toSql(run: Run): Sql {
   }) as unknown as Sql;
   sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
     run<T>(text, params);
+  sql.transaction = <T>(fn: (tx: Sql) => Promise<T>): Promise<T> => transact(fn);
   return sql;
 }
 
@@ -95,10 +104,34 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
     neonPool = pool;
+    const transact: Transact = async <T>(fn: (tx: Sql) => Promise<T>): Promise<T> => {
+      // Dedicated client: pool.query() would spread statements across
+      // connections, silently breaking the transaction.
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const tx = toSql(
+          async <U>(text: string, params: unknown[]) => {
+            const res = await client.query(text, params);
+            return res.rows as U[];
+          },
+          // Nested transactions run inline on the same connection.
+          <U>(inner: (tx2: Sql) => Promise<U>) => inner(tx),
+        );
+        const out = await fn(tx);
+        await client.query("COMMIT");
+        return out;
+      } catch (err) {
+        try { await client.query("ROLLBACK"); } catch { /* already broken */ }
+        throw err;
+      } finally {
+        client.release();
+      }
+    };
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
-    });
+    }, transact);
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
     throw err;
@@ -214,6 +247,18 @@ async function createPgliteSql(): Promise<Sql> {
   return toSql(async <T>(text: string, params: unknown[]) => {
     const result = await pg.query<T>(text, params);
     return result.rows;
+  }, async <T>(fn: (tx: Sql) => Promise<T>): Promise<T> => {
+    return pg.transaction(async (ptx) => {
+      const tx = toSql(
+        async <U>(text: string, params: unknown[]) => {
+          const result = await ptx.query<U>(text, params);
+          return result.rows;
+        },
+        // Nested transactions run inline on the same PGlite transaction.
+        <U>(inner: (tx2: Sql) => Promise<U>) => inner(tx),
+      );
+      return fn(tx);
+    });
   });
 }
 

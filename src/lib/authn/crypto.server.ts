@@ -219,17 +219,31 @@ function getKey(keyId: string): Buffer {
 }
 
 function checkAad(aad: string): void {
-  // AAD must be the organizationId; fail inside the module's error contract
+  // AAD must be a non-empty string; fail inside the module's error contract
   // rather than letting Buffer.from(undefined) throw a raw TypeError.
   if (typeof aad !== "string" || !aad) {
-    throw new Error("[authn:crypto] aad (organizationId) must be a non-empty string");
+    throw new Error("[authn:crypto] aad must be a non-empty string");
   }
 }
 
 /**
- * Encrypt a UTF-8 string. `aad` must be the organizationId (binds the
- * ciphertext to the org — research §6a). Returns the key envelope; store both
- * `keyId` and `payload` on the credential row.
+ * Build the AES-GCM AAD for an org-scoped secret. The AAD binds BOTH the
+ * organization and the secret's purpose (`pwrcell.password`, `ring.refresh`,
+ * …): ciphertexts for different secrets of the same org are not interchangeable,
+ * so a confused write or a DB-level swap cannot authenticate (security review
+ * 2026-09-25 R2.3). The \0 separators make the framing unambiguous.
+ */
+export function orgAad(orgId: string, purpose: string): string {
+  checkAad(orgId);
+  checkAad(purpose);
+  return `${orgId}\0${purpose}`;
+}
+
+/**
+ * Encrypt a UTF-8 string. `aad` must be built with orgAad() (binds the
+ * ciphertext to the org AND the secret's purpose — research §6a, hardened
+ * 2026-09-25). Returns the key envelope; store both `keyId` and `payload`
+ * on the credential row.
  */
 export function encryptString(plaintext: string, aad: string): EncryptedPayload {
   checkAad(aad);

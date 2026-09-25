@@ -1,6 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
-import { env } from "@/lib/env.server";
+/**
+ * Per-organization Ring camera slot settings (Phase 2).
+ *
+ * Camera slot assignment lives in the org_settings "camera" section. Refresh
+ * tokens moved to org-ring-tokens.server.ts (AES-256-GCM at rest).
+ */
+import { getOrgSection, setOrgSection } from "@/lib/org-settings.server";
 import type {
   CameraSettings,
   CameraSlot,
@@ -8,54 +12,6 @@ import type {
 } from "./types";
 
 export type { CameraMode, CameraSettings, CameraSlot, DiscoveredCamera } from "./types";
-
-/**
- * Ring persistence: refresh token in dashboard.env (0600, never exposed via
- * API) and camera slot assignment in camera-settings.json.
- */
-
-const ENV_FILE = path.resolve(process.cwd(), "dashboard.env");
-const CAM_FILE = path.resolve(process.cwd(), "camera-settings.json");
-
-function readEnvFile(): Record<string, string> {
-  try {
-    const raw = fs.readFileSync(ENV_FILE, "utf8");
-    const out: Record<string, string> = {};
-    for (const line of raw.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-      if (m) out[m[1]] = m[2];
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function writeEnvFile(vars: Record<string, string>): void {
-  const lines = Object.entries(vars).map(([k, v]) => `${k}=${v}`);
-  fs.writeFileSync(ENV_FILE, lines.join("\n") + "\n", { mode: 0o600 });
-}
-
-export function getRingToken(): string | null {
-  const file = readEnvFile();
-  const t = (file["RING_REFRESH_TOKEN"] ?? env("RING_REFRESH_TOKEN") ?? "").trim();
-  return t || null;
-}
-
-/** Save the refresh token (file + live process env so no restart is needed). */
-export function setRingToken(token: string): void {
-  const file = readEnvFile();
-  file["RING_REFRESH_TOKEN"] = token.trim();
-  writeEnvFile(file);
-  process.env.RING_REFRESH_TOKEN = token.trim();
-}
-
-export function clearRingToken(): void {
-  const file = readEnvFile();
-  delete file["RING_REFRESH_TOKEN"];
-  writeEnvFile(file);
-  delete process.env.RING_REFRESH_TOKEN;
-}
 
 const DEFAULTS: CameraSettings = {
   enabled: false,
@@ -97,37 +53,35 @@ function mergeSlot(cur: CameraSlot | null, raw: unknown): CameraSlot | null {
   return sanitizeSlot({ ...(cur ?? {}), ...(raw as Record<string, unknown>) });
 }
 
-export function loadCameraSettings(): CameraSettings {
-  try {
-    const raw = JSON.parse(fs.readFileSync(CAM_FILE, "utf8")) as Partial<CameraSettings>;
-    return {
-      enabled: raw.enabled === true,
-      cam1: sanitizeSlot(raw.cam1),
-      cam2: sanitizeSlot(raw.cam2),
-      discovered: Array.isArray(raw.discovered)
-        ? raw.discovered
-            .filter(
-              (d): d is DiscoveredCamera =>
-                !!d && typeof d === "object" && Number.isFinite((d as DiscoveredCamera).deviceId),
-            )
-            .map((d) => ({
-              deviceId: Number(d.deviceId),
-              name: String(d.name ?? "").slice(0, 60),
-              model: String(d.model ?? "").slice(0, 60),
-            }))
-        : [],
-      discoveredAt:
-        typeof raw.discoveredAt === "number" && raw.discoveredAt > 0
-          ? raw.discoveredAt
-          : null,
-    };
-  } catch {
-    return { ...DEFAULTS };
-  }
+function sanitize(raw: unknown): CameraSettings {
+  const r = (raw ?? {}) as Partial<CameraSettings>;
+  return {
+    enabled: r.enabled === true,
+    cam1: sanitizeSlot(r.cam1),
+    cam2: sanitizeSlot(r.cam2),
+    discovered: Array.isArray(r.discovered)
+      ? r.discovered
+          .filter(
+            (d): d is DiscoveredCamera =>
+              !!d && typeof d === "object" && Number.isFinite((d as DiscoveredCamera).deviceId),
+          )
+          .map((d) => ({
+            deviceId: Number(d.deviceId),
+            name: String(d.name ?? "").slice(0, 60),
+            model: String(d.model ?? "").slice(0, 60),
+          }))
+      : [],
+    discoveredAt:
+      typeof r.discoveredAt === "number" && r.discoveredAt > 0
+        ? r.discoveredAt
+        : null,
+  };
 }
 
-function writeSettings(s: CameraSettings): void {
-  fs.writeFileSync(CAM_FILE, JSON.stringify(s, null, 2) + "\n", "utf8");
+export async function loadCameraSettings(orgId: string): Promise<CameraSettings> {
+  const raw = await getOrgSection(orgId, "camera");
+  if (raw === undefined) return { ...DEFAULTS };
+  return sanitize(raw);
 }
 
 export interface CameraSettingsPatch {
@@ -136,8 +90,8 @@ export interface CameraSettingsPatch {
   cam2?: unknown;
 }
 
-export function saveCameraSettings(patch: CameraSettingsPatch): CameraSettings {
-  const cur = loadCameraSettings();
+export async function saveCameraSettings(orgId: string, patch: CameraSettingsPatch): Promise<CameraSettings> {
+  const cur = await loadCameraSettings(orgId);
   const next: CameraSettings = {
     enabled: typeof patch.enabled === "boolean" ? patch.enabled : cur.enabled,
     cam1: "cam1" in patch ? mergeSlot(cur.cam1, patch.cam1) : cur.cam1,
@@ -145,12 +99,12 @@ export function saveCameraSettings(patch: CameraSettingsPatch): CameraSettings {
     discovered: cur.discovered,
     discoveredAt: cur.discoveredAt,
   };
-  writeSettings(next);
+  await setOrgSection(orgId, "camera", next);
   return next;
 }
 
-export function saveDiscovered(cams: DiscoveredCamera[]): CameraSettings {
-  const cur = loadCameraSettings();
+export async function saveDiscovered(orgId: string, cams: DiscoveredCamera[]): Promise<CameraSettings> {
+  const cur = await loadCameraSettings(orgId);
   const next: CameraSettings = {
     ...cur,
     discovered: cams,
@@ -175,12 +129,12 @@ export function saveDiscovered(cams: DiscoveredCamera[]): CameraSettings {
       intervalSec: 30,
     };
   }
-  writeSettings(next);
+  await setOrgSection(orgId, "camera", next);
   return next;
 }
 
-export function resetCameraSettings(): CameraSettings {
+export async function resetCameraSettings(orgId: string): Promise<CameraSettings> {
   const next = { ...DEFAULTS };
-  writeSettings(next);
+  await setOrgSection(orgId, "camera", next);
   return next;
 }

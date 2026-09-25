@@ -1,21 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireSessionApi } from "@/lib/authn/guard.server";
+import { requireOrgApi } from "@/lib/authn/guard.server";
 import { ALERT_RULES } from "@/lib/alert-types";
 import { loadAlertSettings, saveAlertSettings } from "@/lib/alerts.server";
 
 export const Route = createFileRoute("/api/alerts-settings")({
   server: {
     handlers: {
-      GET: async () => {
-        const authz = await requireSessionApi();
+      GET: async ({ request }) => {
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         return Response.json(
-          { settings: loadAlertSettings(), rules: ALERT_RULES },
+          { settings: await loadAlertSettings(authz.orgId), rules: ALERT_RULES },
           { headers: { "cache-control": "no-store" } },
         );
       },
       PUT: async ({ request }) => {
-        const authz = await requireSessionApi();
+        const authz = await requireOrgApi(request);
         if (authz instanceof Response) return authz;
         const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
         const patch: Record<string, unknown> = {};
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/alerts-settings")({
           }
           patch.rules = rules;
         }
-        return Response.json({ settings: saveAlertSettings(patch) });
+        return Response.json({ settings: await saveAlertSettings(authz.orgId, patch) });
       },
     },
   },

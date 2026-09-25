@@ -28,8 +28,7 @@ export function CostSection({ timeZone }: { timeZone?: string | null }) {
     let cancelled = false;
     const load = async () => {
       try {
-        const tz = timeZone || "America/Los_Angeles";
-        const res = await fetch(`/api/cost?tz=${encodeURIComponent(tz)}`, {
+        const res = await fetch(`/api/cost`, {
           cache: "no-store",
         });
         if (!res.ok) return;

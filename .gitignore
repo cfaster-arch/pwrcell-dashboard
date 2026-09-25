@@ -9,7 +9,7 @@ dist/
 dashboard.env
 *.env
 display-settings.json
-display-background.*
+/display-background.*
 data/
 *.log
 

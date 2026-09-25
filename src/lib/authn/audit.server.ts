@@ -14,7 +14,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { getSql } from "@/lib/db";
+import { getSql, type Sql } from "@/lib/db";
 
 /** Canonical action names. Use these — never free-form strings — for queries. */
 export const AUDIT_ACTIONS = {
@@ -29,6 +29,10 @@ export const AUDIT_ACTIONS = {
   USER_ROLE_CHANGED: "user.role_changed",
   ORG_CREATED: "org.created",
   ORG_DELETED: "org.deleted",
+  CREDENTIALS_SET: "credentials.set",
+  CREDENTIALS_CLEARED: "credentials.cleared",
+  RING_CONNECTED: "ring.connected",
+  RING_DISCONNECTED: "ring.disconnected",
   KIOSK_PAIRED: "kiosk.paired",
   KIOSK_REVOKED: "kiosk.revoked",
   KIOSK_PAIR_CODE_CREATED: "kiosk.pair_code_created",
@@ -135,11 +139,16 @@ function withAuditMutex<T>(fn: () => Promise<T>): Promise<T> {
 /**
  * Append one audit event. Never throws away data: on any failure the error
  * propagates and nothing is written.
+ *
+ * Pass `sql` to write inside an existing transaction (e.g. the org-deletion
+ * cascade, security review 2026-09-25 R2.10) so the audit row commits or rolls
+ * back with the destructive change — the deletion can never land without its
+ * audit record. The in-process mutex still serializes concurrent callers.
  */
-export async function auditEvent(e: AuditEventInput): Promise<void> {
+export async function auditEvent(e: AuditEventInput, sql?: Sql): Promise<void> {
   if (!e.action) throw new Error("[audit] action is required");
   return withAuditMutex(async () => {
-    const sql = await getSql();
+    const db = sql ?? (await getSql());
     const ts = new Date().toISOString();
     const fields: Record<string, unknown> = {
       ts,
@@ -153,12 +162,12 @@ export async function auditEvent(e: AuditEventInput): Promise<void> {
       user_agent: e.userAgent ?? null,
     };
     const canonical = canonicalEventJson(fields);
-    const prevRows = await sql.query<{ row_hash: string }>(
+    const prevRows = await db.query<{ row_hash: string }>(
       "select row_hash from audit_log order by id desc limit 1",
     );
     const prevHash = prevRows[0]?.row_hash ?? AUDIT_GENESIS_HASH;
     const rowHash = hashAuditRow(prevHash, canonical);
-    await sql.query(
+    await db.query(
       `insert into audit_log
          (ts, actor_user_id, actor_type, action, target_type, target_id, org_id, ip, user_agent, prev_hash, row_hash)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,

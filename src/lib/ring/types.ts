@@ -9,6 +9,12 @@ export interface CameraSlot {
   wired: boolean;
   mode: CameraMode;
   intervalSec: number;
+  /**
+   * Org-namespaced go2rtc stream name (e.g. "org_abc__cam1"), attached by the
+   * server when serving settings to the client. Never persisted, never sent
+   * by the client.
+   */
+  stream?: string;
 }
 
 export interface DiscoveredCamera {

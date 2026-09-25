@@ -7,8 +7,18 @@ import appCss from "../styles.css?url";
 const APP_NAME = "PWRcell";
 
 const loadRootSettings = createServerFn({ method: "GET" }).handler(async () => {
-  const { loadDisplaySettings } = await import("@/lib/display-settings.server");
-  return loadDisplaySettings();
+  const disp = await import("@/lib/display-settings.server");
+  try {
+    // Signed-in users get their own org's theme; the signed-out shell (login
+    // page) falls back to defaults — never another org's settings.
+    const guard = await import("@/lib/authn/guard.server");
+    const { getRequestHeaders } = await import("@tanstack/react-start/server");
+    const orgId = await guard.getMyOrgId(getRequestHeaders());
+    if (typeof orgId === "string") return disp.loadDisplaySettings(orgId);
+  } catch {
+    /* signed out or no org — fall through to defaults */
+  }
+  return disp.loadDisplayDefaults();
 });
 
 export const Route = createRootRoute({

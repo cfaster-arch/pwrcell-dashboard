@@ -1,6 +1,15 @@
-import fs from "node:fs";
-import path from "node:path";
+/**
+ * Alert engine + energy-history sampler (Phase 2: per-organization).
+ *
+ * Each organization gets its own engine state (transition memory, push
+ * cooldowns) keyed by org id, its own settings section ("alerts" in
+ * org_settings), and its own rows in alerts / energy_samples filtered by
+ * organization_id. Demo data never touches history or fires alerts.
+ *
+ * Push delivery is via ntfy; the DB is the source of truth for alert history.
+ */
 import { getSql } from "@/lib/db";
+import { getOrgSection, setOrgSection } from "@/lib/org-settings.server";
 import type { PowerPoint } from "./pwrcell/types";
 import {
   ALERT_RULES,
@@ -12,8 +21,6 @@ import {
 
 export { ALERT_RULES };
 export type { AlertRow, AlertRuleKey, AlertSettings, AlertSeverity };
-
-const SETTINGS_FILE = path.resolve(process.cwd(), "alert-settings.json");
 
 /** Max one push notification per rule per hour while a condition persists. */
 const PUSH_COOLDOWN_MS = 60 * 60 * 1000;
@@ -62,33 +69,25 @@ function sanitize(raw: unknown): AlertSettings {
   };
 }
 
-export function loadAlertSettings(): AlertSettings {
-  try {
-    return sanitize(JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8")) as unknown);
-  } catch {
+/** Load an org's alert settings. First load persists a generated ntfy topic so it stays stable across restarts. */
+export async function loadAlertSettings(orgId: string): Promise<AlertSettings> {
+  const raw = await getOrgSection(orgId, "alerts");
+  if (raw === undefined) {
     const fresh = sanitize(null);
-    // Persist the generated topic so it stays stable across restarts.
-    try {
-      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(fresh, null, 2) + "\n", "utf8");
-    } catch {
-      /* best effort */
-    }
+    await setOrgSection(orgId, "alerts", fresh);
     return fresh;
   }
+  return sanitize(raw);
 }
 
-export function saveAlertSettings(patch: Partial<AlertSettings>): AlertSettings {
-  const current = loadAlertSettings();
+export async function saveAlertSettings(orgId: string, patch: Partial<AlertSettings>): Promise<AlertSettings> {
+  const current = await loadAlertSettings(orgId);
   const merged = sanitize({
     ...current,
     ...patch,
     rules: { ...current.rules, ...(patch.rules ?? {}) },
   });
-  try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(merged, null, 2) + "\n", "utf8");
-  } catch {
-    /* best effort: keep running with in-memory values */
-  }
+  await setOrgSection(orgId, "alerts", merged);
   return merged;
 }
 
@@ -107,32 +106,35 @@ function toRow(r: Record<string, unknown>): AlertRow {
   };
 }
 
-export async function getAlerts(limit = 100): Promise<AlertRow[]> {
+export async function getAlerts(orgId: string, limit = 100): Promise<AlertRow[]> {
   const sql = await getSql();
   const rows = await sql.query(
-    "select id, ts, rule, severity, message, acknowledged from alerts order by ts desc limit $1",
-    [Math.min(500, Math.max(1, limit))],
+    "select id, ts, rule, severity, message, acknowledged from alerts where organization_id = $1 order by ts desc limit $2",
+    [orgId, Math.min(500, Math.max(1, limit))],
   );
   return rows.map(toRow);
 }
 
-export async function getUnacknowledged(limit = 25): Promise<AlertRow[]> {
+export async function getUnacknowledged(orgId: string, limit = 25): Promise<AlertRow[]> {
   const sql = await getSql();
   const rows = await sql.query(
-    "select id, ts, rule, severity, message, acknowledged from alerts where acknowledged = false order by ts desc limit $1",
-    [Math.min(100, Math.max(1, limit))],
+    "select id, ts, rule, severity, message, acknowledged from alerts where organization_id = $1 and acknowledged = false order by ts desc limit $2",
+    [orgId, Math.min(100, Math.max(1, limit))],
   );
   return rows.map(toRow);
 }
 
-export async function acknowledgeAlert(id: number): Promise<void> {
+export async function acknowledgeAlert(orgId: string, id: number): Promise<void> {
   const sql = await getSql();
-  await sql.query("update alerts set acknowledged = true where id = $1", [id]);
+  await sql.query("update alerts set acknowledged = true where id = $1 and organization_id = $2", [id, orgId]);
 }
 
-export async function acknowledgeAll(): Promise<void> {
+export async function acknowledgeAll(orgId: string): Promise<void> {
   const sql = await getSql();
-  await sql.query("update alerts set acknowledged = true where acknowledged = false");
+  await sql.query(
+    "update alerts set acknowledged = true where organization_id = $1 and acknowledged = false",
+    [orgId],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -174,29 +176,43 @@ type EngineState = {
   lastLiveSuccessAt: number | null;
 };
 
-const engine: EngineState = {
-  prevGridOutage: null,
-  prevLowSoc: null,
-  prevStale: null,
-  prevError: null,
-  notified: {
-    gridOutage: false,
-    gridRestored: false,
-    lowSoc: false,
-    feedStale: false,
-    pollError: false,
-  },
-  lastPushAt: {
-    gridOutage: 0,
-    gridRestored: 0,
-    lowSoc: 0,
-    feedStale: 0,
-    pollError: 0,
-  },
-  lastSampleAt: 0,
-  lastRetentionAt: 0,
-  lastLiveSuccessAt: null,
-};
+function newEngineState(): EngineState {
+  return {
+    prevGridOutage: null,
+    prevLowSoc: null,
+    prevStale: null,
+    prevError: null,
+    notified: {
+      gridOutage: false,
+      gridRestored: false,
+      lowSoc: false,
+      feedStale: false,
+      pollError: false,
+    },
+    lastPushAt: {
+      gridOutage: 0,
+      gridRestored: 0,
+      lowSoc: 0,
+      feedStale: 0,
+      pollError: 0,
+    },
+    lastSampleAt: 0,
+    lastRetentionAt: 0,
+    lastLiveSuccessAt: null,
+  };
+}
+
+const globalRef = globalThis as unknown as { __alertEngines__?: Map<string, EngineState> };
+
+function engineFor(orgId: string): EngineState {
+  if (!globalRef.__alertEngines__) globalRef.__alertEngines__ = new Map();
+  let eng = globalRef.__alertEngines__.get(orgId);
+  if (!eng) {
+    eng = newEngineState();
+    globalRef.__alertEngines__.set(orgId, eng);
+  }
+  return eng;
+}
 
 /**
  * Grid state classification. Returns null when the value is missing or
@@ -215,13 +231,13 @@ function inverterError(sysMode: string | null | undefined): string | null {
   return null;
 }
 
-async function recordAlert(rule: AlertRuleKey, message: string): Promise<void> {
+async function recordAlert(orgId: string, rule: AlertRuleKey, message: string): Promise<void> {
   const meta = ALERT_RULES.find((r) => r.key === rule);
   try {
     const sql = await getSql();
     await sql.query(
-      "insert into alerts (rule, severity, message) values ($1, $2, $3)",
-      [rule, meta?.severity ?? "info", message],
+      "insert into alerts (organization_id, rule, severity, message) values ($1, $2, $3, $4)",
+      [orgId, rule, meta?.severity ?? "info", message],
     );
   } catch (err) {
     console.warn("[alerts] failed to record alert:", err instanceof Error ? err.message : err);
@@ -229,40 +245,46 @@ async function recordAlert(rule: AlertRuleKey, message: string): Promise<void> {
 }
 
 async function fire(
+  eng: EngineState,
   settings: AlertSettings,
+  orgId: string,
   rule: AlertRuleKey,
   message: string,
   now: number,
 ): Promise<void> {
-  await recordAlert(rule, message);
+  await recordAlert(orgId, rule, message);
   if (!settings.enabled || !settings.rules[rule].enabled || !settings.ntfyTopic) return;
-  if (now - engine.lastPushAt[rule] < PUSH_COOLDOWN_MS) return;
-  engine.lastPushAt[rule] = now;
+  if (now - eng.lastPushAt[rule] < PUSH_COOLDOWN_MS) return;
+  eng.lastPushAt[rule] = now;
   const label = ALERT_RULES.find((r) => r.key === rule)?.label ?? rule;
   await pushNtfy(settings.ntfyTopic, `[PWRcell] ${label}`, message);
 }
 
 /** Reminder while a condition persists — at most one push per cooldown window,
  *  and only when a push would actually go out (no DB spam when push is off). */
-function dueForReminder(settings: AlertSettings, rule: AlertRuleKey, now: number): boolean {
+function dueForReminder(
+  eng: EngineState,
+  settings: AlertSettings,
+  rule: AlertRuleKey,
+  now: number,
+): boolean {
   return (
     settings.enabled &&
     settings.rules[rule].enabled &&
     !!settings.ntfyTopic &&
-    now - engine.lastPushAt[rule] >= PUSH_COOLDOWN_MS
+    now - eng.lastPushAt[rule] >= PUSH_COOLDOWN_MS
   );
 }
 
-async function writeSample(point: PowerPoint, now: number): Promise<void> {
+async function writeSample(orgId: string, point: PowerPoint): Promise<void> {
   try {
     const sql = await getSql();
-    // Phase 1: single-org writer — rows land in the default org. Phase 2's
-    // per-org poller will pass the org explicitly (no default in the DDL).
     await sql.query(
       `insert into energy_samples (organization_id, ts, solar_w, home_w, battery_w, grid_w, soc, sys_mode, grid_state)
-       values ('org_default', to_timestamp($1 / 1000.0), $2, $3, $4, $5, $6, $7, $8)
+       values ($1, to_timestamp($2 / 1000.0), $3, $4, $5, $6, $7, $8, $9)
        on conflict (organization_id, ts) do nothing`,
       [
+        orgId,
         point.ts,
         point.solarW,
         point.homeW,
@@ -288,138 +310,146 @@ async function sweepRetention(): Promise<void> {
 }
 
 export async function afterPoll(opts: {
+  orgId: string;
   point: PowerPoint | null;
   mode: "live" | "demo";
   ok: boolean;
   lastError: string | null;
 }): Promise<void> {
   const now = Date.now();
-  const { point, mode, ok, lastError } = opts;
+  const { orgId, point, mode, ok, lastError } = opts;
+  const eng = engineFor(orgId);
 
   // Demo data must never pollute the long-term history or fire real alerts.
   if (mode !== "live" || !point) return;
 
-  if (ok) engine.lastLiveSuccessAt = now;
+  if (ok) eng.lastLiveSuccessAt = now;
 
   // Energy history: one sample per poll, throttled to 1/minute.
-  if (now - engine.lastSampleAt >= SAMPLE_MS) {
-    engine.lastSampleAt = now;
-    await writeSample(point, now);
+  if (now - eng.lastSampleAt >= SAMPLE_MS) {
+    eng.lastSampleAt = now;
+    await writeSample(orgId, point);
   }
 
   // Retention: one sweep per day.
-  if (now - engine.lastRetentionAt >= RETENTION_SWEEP_MS) {
-    engine.lastRetentionAt = now;
+  if (now - eng.lastRetentionAt >= RETENTION_SWEEP_MS) {
+    eng.lastRetentionAt = now;
     await sweepRetention();
   }
 
   // Alerts.
-  const settings = loadAlertSettings();
+  const settings = await loadAlertSettings(orgId);
 
   // Grid outage / restored (transition on classified state). A bad condition
   // already active at startup notifies immediately — staying silent about an
   // ongoing outage would defeat the monitor.
   const gridOutage = classifyGrid(point.gridState);
   if (gridOutage !== null) {
-    if (engine.prevGridOutage === null) {
+    if (eng.prevGridOutage === null) {
       if (gridOutage) {
-        await fire(settings, "gridOutage", `Grid outage detected (grid state: ${point.gridState}).`, now);
-        engine.notified.gridOutage = true;
+        await fire(eng, settings, orgId, "gridOutage", `Grid outage detected (grid state: ${point.gridState}).`, now);
+        eng.notified.gridOutage = true;
       }
-    } else if (gridOutage !== engine.prevGridOutage) {
+    } else if (gridOutage !== eng.prevGridOutage) {
       if (gridOutage) {
-        await fire(settings, "gridOutage", `Grid outage detected (grid state: ${point.gridState}).`, now);
-        engine.notified.gridOutage = true;
+        await fire(eng, settings, orgId, "gridOutage", `Grid outage detected (grid state: ${point.gridState}).`, now);
+        eng.notified.gridOutage = true;
       } else {
-        await fire(settings, "gridRestored", "Grid power restored.", now);
-        engine.notified.gridOutage = false;
+        await fire(eng, settings, orgId, "gridRestored", "Grid power restored.", now);
+        eng.notified.gridOutage = false;
       }
     } else if (
       gridOutage &&
-      engine.notified.gridOutage &&
-      dueForReminder(settings, "gridOutage", now)
+      eng.notified.gridOutage &&
+      dueForReminder(eng, settings, "gridOutage", now)
     ) {
-      await fire(settings, "gridOutage", `Grid still out (grid state: ${point.gridState}).`, now);
+      await fire(eng, settings, orgId, "gridOutage", `Grid still out (grid state: ${point.gridState}).`, now);
     }
-    engine.prevGridOutage = gridOutage;
+    eng.prevGridOutage = gridOutage;
   }
 
   // Battery low.
   const soc = point.batterySoc;
   if (soc != null && Number.isFinite(soc)) {
     const low = soc < settings.lowSocThreshold;
-    if (engine.prevLowSoc === null) {
+    if (eng.prevLowSoc === null) {
       if (low) {
         await fire(
+          eng,
           settings,
+          orgId,
           "lowSoc",
           `Battery at ${Math.round(soc)}% — below the ${settings.lowSocThreshold}% threshold.`,
           now,
         );
-        engine.notified.lowSoc = true;
+        eng.notified.lowSoc = true;
       }
-    } else if (low !== engine.prevLowSoc) {
+    } else if (low !== eng.prevLowSoc) {
       if (low) {
         await fire(
+          eng,
           settings,
+          orgId,
           "lowSoc",
           `Battery at ${Math.round(soc)}% — below the ${settings.lowSocThreshold}% threshold.`,
           now,
         );
-        engine.notified.lowSoc = true;
+        eng.notified.lowSoc = true;
       } else {
-        engine.notified.lowSoc = false;
+        eng.notified.lowSoc = false;
       }
-    } else if (low && engine.notified.lowSoc && dueForReminder(settings, "lowSoc", now)) {
+    } else if (low && eng.notified.lowSoc && dueForReminder(eng, settings, "lowSoc", now)) {
       await fire(
+        eng,
         settings,
+        orgId,
         "lowSoc",
         `Battery still low at ${Math.round(soc)}% (threshold ${settings.lowSocThreshold}%).`,
         now,
       );
     }
-    engine.prevLowSoc = low;
+    eng.prevLowSoc = low;
   }
 
   // Feed stale: no successful cloud poll for 10+ minutes.
   const stale =
-    engine.lastLiveSuccessAt !== null && now - engine.lastLiveSuccessAt > STALE_AFTER_MS;
-  if (engine.prevStale === null) {
+    eng.lastLiveSuccessAt !== null && now - eng.lastLiveSuccessAt > STALE_AFTER_MS;
+  if (eng.prevStale === null) {
     if (stale) {
-      const mins = Math.round((now - (engine.lastLiveSuccessAt ?? now)) / 60000);
-      await fire(settings, "feedStale", `No successful cloud poll for ${mins}+ minutes.`, now);
-      engine.notified.feedStale = true;
+      const mins = Math.round((now - (eng.lastLiveSuccessAt ?? now)) / 60000);
+      await fire(eng, settings, orgId, "feedStale", `No successful cloud poll for ${mins}+ minutes.`, now);
+      eng.notified.feedStale = true;
     }
-  } else if (stale !== engine.prevStale) {
+  } else if (stale !== eng.prevStale) {
     if (stale) {
-      const mins = Math.round((now - (engine.lastLiveSuccessAt ?? now)) / 60000);
-      await fire(settings, "feedStale", `No successful cloud poll for ${mins}+ minutes.`, now);
-      engine.notified.feedStale = true;
+      const mins = Math.round((now - (eng.lastLiveSuccessAt ?? now)) / 60000);
+      await fire(eng, settings, orgId, "feedStale", `No successful cloud poll for ${mins}+ minutes.`, now);
+      eng.notified.feedStale = true;
     } else {
-      engine.notified.feedStale = false;
+      eng.notified.feedStale = false;
     }
-  } else if (stale && engine.notified.feedStale && dueForReminder(settings, "feedStale", now)) {
-    await fire(settings, "feedStale", "Cloud feed still stale — check the PWRview connection.", now);
+  } else if (stale && eng.notified.feedStale && dueForReminder(eng, settings, "feedStale", now)) {
+    await fire(eng, settings, orgId, "feedStale", "Cloud feed still stale — check the PWRview connection.", now);
   }
-  engine.prevStale = stale;
+  eng.prevStale = stale;
 
   // Poll / inverter error.
   const invErr = inverterError(point.sysMode);
   const errSig = lastError ?? (invErr ? `Inverter reports: ${invErr}` : null);
-  if (engine.prevError === null) {
+  if (eng.prevError === null) {
     if (errSig) {
-      await fire(settings, "pollError", errSig.slice(0, 300), now);
-      engine.notified.pollError = true;
+      await fire(eng, settings, orgId, "pollError", errSig.slice(0, 300), now);
+      eng.notified.pollError = true;
     }
-  } else if (errSig !== engine.prevError) {
+  } else if (errSig !== eng.prevError) {
     if (errSig) {
-      await fire(settings, "pollError", errSig.slice(0, 300), now);
-      engine.notified.pollError = true;
+      await fire(eng, settings, orgId, "pollError", errSig.slice(0, 300), now);
+      eng.notified.pollError = true;
     } else {
-      engine.notified.pollError = false;
+      eng.notified.pollError = false;
     }
-  } else if (errSig && engine.notified.pollError && dueForReminder(settings, "pollError", now)) {
-    await fire(settings, "pollError", `Still failing: ${errSig.slice(0, 300)}`, now);
+  } else if (errSig && eng.notified.pollError && dueForReminder(eng, settings, "pollError", now)) {
+    await fire(eng, settings, orgId, "pollError", `Still failing: ${errSig.slice(0, 300)}`, now);
   }
-  engine.prevError = errSig;
+  eng.prevError = errSig;
 }
