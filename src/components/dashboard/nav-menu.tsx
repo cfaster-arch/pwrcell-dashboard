@@ -3,6 +3,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import {
   BatteryCharging,
   Home,
+  KeyRound,
   LayoutDashboard,
   Menu,
   SunMedium,
@@ -24,7 +25,13 @@ const LINKS = [
   { to: "/graphs/$metric", metric: "grid", label: "Grid graphs", icon: UtilityPole },
 ] as const;
 
-export function NavMenu({ timeZone }: { timeZone?: string | null }) {
+export function NavMenu({
+  timeZone,
+  onOpenLogin,
+}: {
+  timeZone?: string | null;
+  onOpenLogin: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const { settings } = useDisplaySettings();
@@ -74,6 +81,20 @@ export function NavMenu({ timeZone }: { timeZone?: string | null }) {
               </button>
             </div>
             <ul className="mt-3 flex flex-col gap-1">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onOpenLogin();
+                  }}
+                  aria-haspopup="dialog"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <KeyRound className="size-5" aria-hidden="true" />
+                  PWRview login
+                </button>
+              </li>
               {LINKS.map((l) => {
                 const href = "metric" in l ? `/graphs/${l.metric}` : l.to;
                 const active = pathname === href;

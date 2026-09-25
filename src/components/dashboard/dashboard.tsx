@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BatteryCharging, Home, KeyRound, SunMedium, UtilityPole } from "lucide-react";
+import { BatteryCharging, Home, SunMedium, UtilityPole } from "lucide-react";
 import {
   batteryDirection,
   clockLabel,
@@ -247,7 +247,7 @@ function DashboardView({
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-start gap-1">
             <div className="-ml-2.5 mt-0.5">
-              <NavMenu timeZone={tz} />
+              <NavMenu timeZone={tz} onOpenLogin={() => setCredsOpen(true)} />
             </div>
             <div>
               <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
@@ -261,14 +261,6 @@ function DashboardView({
             </div>
           </div>
           <div className="flex items-end gap-5">
-            <button
-              onClick={() => setCredsOpen(true)}
-              className="mb-0.5 flex items-center gap-2 rounded-lg bg-surface px-3 py-2.5 text-sm font-medium text-muted shadow-[var(--shadow-border)] hover:bg-surface-2 hover:text-fg"
-              aria-haspopup="dialog"
-            >
-              <KeyRound className="size-4" />
-              PWRview login
-            </button>
             <div className="text-right">
               <p className="font-mono text-3xl leading-none font-medium tracking-tight tabular-nums sm:text-4xl" suppressHydrationWarning>
                 {clockLabel(clockTs, tz)}
