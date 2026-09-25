@@ -4,7 +4,7 @@ import {
   getCredentialMeta,
   setCredentials,
 } from "@/lib/pwrcell/credentials.server";
-import { resetAuth } from "@/lib/pwrcell/poller.server";
+import { resetAuth, resetToDemo } from "@/lib/pwrcell/poller.server";
 
 type Body = { email?: unknown; password?: unknown };
 
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/api/credentials")({
       },
       DELETE: async () => {
         clearCredentials();
-        resetAuth();
+        resetToDemo();
         return Response.json(getCredentialMeta(), {
           headers: { "cache-control": "no-store" },
         });

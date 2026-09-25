@@ -119,6 +119,7 @@ export function CredentialsDialog({
   async function disconnect() {
     setBusy(true);
     setError(null);
+    setLiveError(null);
     try {
       const res = await fetch("/api/credentials", { method: "DELETE" });
       const body = (await res.json()) as Meta;
@@ -126,6 +127,7 @@ export function CredentialsDialog({
       setEmail("");
       setPassword("");
       setSaved(false);
+      setLiveError(null);
     } catch {
       setError("Could not reach the server.");
     } finally {

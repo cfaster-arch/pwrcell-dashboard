@@ -82,4 +82,8 @@ export function clearCredentials(): void {
   delete file["GENERAC_EMAIL"];
   delete file["GENERAC_PASSWORD"];
   writeEnvFile(file);
+  // The launcher copies dashboard.env into the process environment at startup,
+  // so without this an env-supplied login would survive the disconnect.
+  delete process.env.GENERAC_EMAIL;
+  delete process.env.GENERAC_PASSWORD;
 }

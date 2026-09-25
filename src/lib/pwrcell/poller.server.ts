@@ -46,6 +46,19 @@ export function resetAuth(): void {
   generac.clearTokens();
 }
 
+/**
+ * Called when the user disconnects via the login menu.
+ * Drops tokens, the home id, and any auth error, and settles back into
+ * demo mode immediately instead of waiting for the next poll tick.
+ */
+export function resetToDemo(): void {
+  generac.clearTokens();
+  state.lastError = null;
+  state.lastHomesRaw = null;
+  state.homeId = null;
+  state.mode = "demo";
+}
+
 function configured(): boolean {
   return hasCredentials();
 }
