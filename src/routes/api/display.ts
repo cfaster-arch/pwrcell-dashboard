@@ -39,6 +39,8 @@ export const Route = createFileRoute("/api/display")({
         if (typeof body.backgroundColor === "string" && /^#[0-9a-fA-F]{6}$/.test(body.backgroundColor)) {
           patch.backgroundColor = body.backgroundColor;
         }
+        if (typeof body.nightDim === "boolean") patch.nightDim = body.nightDim;
+        if (typeof body.setupComplete === "boolean") patch.setupComplete = body.setupComplete;
         const next = saveDisplaySettings(patch);
         return Response.json(next, { headers: NO_STORE });
       },
