@@ -208,8 +208,8 @@
 
 /* ---------------- HARDWARE — Windows XP / MS Paint tacky ---------------- */
 /* Gloriously earnest early-2000s: Luna blue title bars, Comic Sans, beveled  */
-/* buttons, a Bliss-ish desktop, a scrolling status ticker, and a Clippy-     */
-/* esque helper. The tackier, the more human.                                  */
+/* buttons, the Bliss wallpaper (original generated artwork), a scrolling      */
+/* status ticker, and a Clippy-esque helper. The tackier, the more human.     */
 [data-personality="hardware"] {
   --color-bg: #245edb;
   --color-surface: #ece9d8;
@@ -256,20 +256,21 @@
   color: #ffffff;
 }
 
-/* Bliss-ish desktop: blue sky, green hill, fixed like wallpaper */
+/* Bliss desktop: the real XP wallpaper feel (original generated artwork, not
+   Microsoft's photo) — fixed like wallpaper, cover so it fills any viewport */
 [data-personality="hardware"] body {
-  background-color: #245edb;
-  background-image:
-    radial-gradient(ellipse 130% 46% at 50% 118%, #62a84b 0%, #3f8a34 34%, transparent 62%),
-    linear-gradient(180deg, #1c4fb8 0%, #2f6fd6 34%, #5b9fe9 78%, #8fc3f0 100%);
+  background-color: #1e6fd9;
+  background-image: url("/assets/xp-bliss-wallpaper.webp");
+  background-size: cover;
+  background-position: center 30%;
   background-attachment: fixed;
 }
 /* The app shell paints bg-bg over the body — punch through to the wallpaper */
 [data-personality="hardware"] .min-h-dvh.bg-bg {
   background-color: transparent;
-  background-image:
-    radial-gradient(ellipse 130% 46% at 50% 118%, #62a84b 0%, #3f8a34 34%, transparent 62%),
-    linear-gradient(180deg, #1c4fb8 0%, #2f6fd6 34%, #5b9fe9 78%, #8fc3f0 100%);
+  background-image: url("/assets/xp-bliss-wallpaper.webp");
+  background-size: cover;
+  background-position: center 30%;
   background-attachment: fixed;
 }
 
