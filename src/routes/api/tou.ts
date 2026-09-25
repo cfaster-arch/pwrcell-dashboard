@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/tou")({
       PUT: async ({ request }) => {
         const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
         const patch: Record<string, unknown> = {};
-        for (const k of ["peakRate", "peakStart", "peakEnd", "offPeakRate", "exportRate", "label"]) {
+        for (const k of ["peakStart", "peakEnd", "summerPeak", "summerOffPeak", "summerExport", "winterPeak", "winterOffPeak", "winterExport", "label"]) {
           if (body[k] !== undefined) patch[k] = body[k];
         }
         return Response.json({ settings: saveTouSettings(patch) });

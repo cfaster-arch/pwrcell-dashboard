@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { loadTouSettings, timeToMinutes } from "@/lib/tou-settings.server";
+import { seasonForMonth } from "@/lib/tou-types";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -55,6 +56,14 @@ function minutesOfDay(ts: number, timeZone: string): number {
   });
   const parts = Object.fromEntries(dtf.formatToParts(new Date(ts)).map((p) => [p.type, p.value]));
   return Number(parts.hour) * 60 + Number(parts.minute);
+}
+
+function monthNum(ts: number, timeZone: string): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone, month: "numeric" }).format(
+      new Date(ts),
+    ),
+  );
 }
 
 export const Route = createFileRoute("/api/cost")({
@@ -122,14 +131,18 @@ export const Route = createFileRoute("/api/cost")({
           const kwh = (avgW * dtH) / 1000;
           const isToday = dayKey(mid, timeZone) === todayKey;
           const targets = isToday ? [acc.today, acc.month] : [acc.month];
-          const rate = isPeak(minutesOfDay(mid, timeZone)) ? rates.peakRate : rates.offPeakRate;
+          const summer = seasonForMonth(monthNum(mid, timeZone)) === "summer";
+          const peakR = summer ? rates.summerPeak : rates.winterPeak;
+          const offR = summer ? rates.summerOffPeak : rates.winterOffPeak;
+          const expR = summer ? rates.summerExport : rates.winterExport;
+          const rate = isPeak(minutesOfDay(mid, timeZone)) ? peakR : offR;
           for (const t of targets) {
             if (kwh >= 0) {
               t.importKwh += kwh;
               t.importCost += kwh * rate;
             } else {
               t.exportKwh += -kwh;
-              t.exportCredit += -kwh * rates.exportRate;
+              t.exportCredit += -kwh * expR;
             }
           }
         }
@@ -147,14 +160,7 @@ export const Route = createFileRoute("/api/cost")({
             timeZone,
             today: { date: todayKey, ...shape(acc.today) },
             month: { month: mKey, ...shape(acc.month) },
-            rates: {
-              peakRate: rates.peakRate,
-              peakStart: rates.peakStart,
-              peakEnd: rates.peakEnd,
-              offPeakRate: rates.offPeakRate,
-              exportRate: rates.exportRate,
-              label: rates.label,
-            },
+            rates: { ...rates, season: seasonForMonth(monthNum(now, timeZone)) },
           },
           { headers: { "cache-control": "no-store" } },
         );

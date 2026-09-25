@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DEFAULT_TOU_SETTINGS, type TouSettings } from "@/lib/tou-types";
+import { DEFAULT_TOU_SETTINGS, type TouSeason, type TouSettings } from "@/lib/tou-types";
 import { cn } from "@/lib/utils";
 
 interface CostPeriod {
@@ -14,7 +14,7 @@ interface CostPayload {
   timeZone: string;
   today: CostPeriod & { date: string };
   month: CostPeriod & { month: string };
-  rates: TouSettings;
+  rates: TouSettings & { season?: TouSeason };
 }
 
 const money = (n: number) =>
@@ -67,6 +67,7 @@ export function CostSection({ timeZone }: { timeZone?: string | null }) {
         {cost && (
           <p className="text-xs text-muted" title={cost.rates.label}>
             {cost.rates.label}
+            {cost.rates.season ? ` · ${cost.rates.season} rates` : ""}
           </p>
         )}
       </header>
@@ -157,7 +158,15 @@ export function TouSettingsSection() {
     }
   };
 
-  const num = (key: "peakRate" | "offPeakRate" | "exportRate") => ({
+  const num = (
+    key:
+      | "summerPeak"
+      | "summerOffPeak"
+      | "summerExport"
+      | "winterPeak"
+      | "winterOffPeak"
+      | "winterExport",
+  ) => ({
     type: "number" as const,
     step: "0.01",
     min: "0",
@@ -173,10 +182,6 @@ export function TouSettingsSection() {
       </h3>
       <p className="mb-3 text-xs text-muted">{draft.label}</p>
       <div className="space-y-3">
-        <label className="menu-field">
-          <span className="menu-field-label">Peak rate ($/kWh)</span>
-          <input className="menu-input w-28 font-mono" {...num("peakRate")} />
-        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="menu-field">
             <span className="menu-field-label">Peak start</span>
@@ -197,13 +202,35 @@ export function TouSettingsSection() {
             />
           </label>
         </div>
+        <p className="pt-1 text-xs font-semibold tracking-wide text-muted uppercase">
+          Summer · Jun–Sep
+        </p>
+        <label className="menu-field">
+          <span className="menu-field-label">Peak rate ($/kWh)</span>
+          <input className="menu-input w-28 font-mono" {...num("summerPeak")} />
+        </label>
         <label className="menu-field">
           <span className="menu-field-label">Off-peak rate ($/kWh)</span>
-          <input className="menu-input w-28 font-mono" {...num("offPeakRate")} />
+          <input className="menu-input w-28 font-mono" {...num("summerOffPeak")} />
         </label>
         <label className="menu-field">
           <span className="menu-field-label">Export credit ($/kWh)</span>
-          <input className="menu-input w-28 font-mono" {...num("exportRate")} />
+          <input className="menu-input w-28 font-mono" {...num("summerExport")} />
+        </label>
+        <p className="pt-1 text-xs font-semibold tracking-wide text-muted uppercase">
+          Winter · Oct–May
+        </p>
+        <label className="menu-field">
+          <span className="menu-field-label">Peak rate ($/kWh)</span>
+          <input className="menu-input w-28 font-mono" {...num("winterPeak")} />
+        </label>
+        <label className="menu-field">
+          <span className="menu-field-label">Off-peak rate ($/kWh)</span>
+          <input className="menu-input w-28 font-mono" {...num("winterOffPeak")} />
+        </label>
+        <label className="menu-field">
+          <span className="menu-field-label">Export credit ($/kWh)</span>
+          <input className="menu-input w-28 font-mono" {...num("winterExport")} />
         </label>
         <div className="flex items-center gap-3 pt-1">
           <button
