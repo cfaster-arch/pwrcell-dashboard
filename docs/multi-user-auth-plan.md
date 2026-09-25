@@ -116,10 +116,12 @@ no-gold-plating directive): rate-limit/throttle check-then-act races
 parallelism; sustained attacks still lock out), `getClientIp` trust depends on
 the nginx `$proxy_add_x_forwarded_for` topology (verified in setup script).
 
-### Phase 2 — Multi-tenancy — implemented 2026-09-25 (branch `multi-user-plan`, commit pending)
+### Phase 2 — Multi-tenancy — implemented 2026-09-25 (branch `multi-user-plan`)
 
-Built in full (Connor's "defer four, slim three" scope). Implemented and
-reviewed; commit + push happen only after the phase boundary below is met.
+Built in full (Connor's "defer four, slim three" scope). Implemented, reviewed,
+and verified against the phase gate (typecheck + production build green;
+273/279 tests passing — 6 failures are pre-existing Grok PWA/plugin branding
+tests failing identically on the untouched Phase 1 baseline).
 
 - [x] Tenant scoping on every route/query: `requireOrgApi(request)` resolves
       the org from the caller's membership (the request never names the org)
