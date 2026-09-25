@@ -86,6 +86,17 @@ function sanitizeSlot(raw: unknown): CameraSlot | null {
   };
 }
 
+/**
+ * Merge a (possibly partial) slot patch over the current slot before
+ * sanitizing, so changing just the mode or snapshot interval doesn't wipe
+ * the camera assignment. Explicit null still unassigns the slot.
+ */
+function mergeSlot(cur: CameraSlot | null, raw: unknown): CameraSlot | null {
+  if (raw === null) return null;
+  if (!raw || typeof raw !== "object") return cur;
+  return sanitizeSlot({ ...(cur ?? {}), ...(raw as Record<string, unknown>) });
+}
+
 export function loadCameraSettings(): CameraSettings {
   try {
     const raw = JSON.parse(fs.readFileSync(CAM_FILE, "utf8")) as Partial<CameraSettings>;
@@ -129,8 +140,8 @@ export function saveCameraSettings(patch: CameraSettingsPatch): CameraSettings {
   const cur = loadCameraSettings();
   const next: CameraSettings = {
     enabled: typeof patch.enabled === "boolean" ? patch.enabled : cur.enabled,
-    cam1: "cam1" in patch ? sanitizeSlot(patch.cam1) : cur.cam1,
-    cam2: "cam2" in patch ? sanitizeSlot(patch.cam2) : cur.cam2,
+    cam1: "cam1" in patch ? mergeSlot(cur.cam1, patch.cam1) : cur.cam1,
+    cam2: "cam2" in patch ? mergeSlot(cur.cam2, patch.cam2) : cur.cam2,
     discovered: cur.discovered,
     discoveredAt: cur.discoveredAt,
   };
