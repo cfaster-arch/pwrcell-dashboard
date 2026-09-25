@@ -22,7 +22,7 @@ jobs:
           npm run build
 
       - name: Package
-        run: tar -czf deploy.tgz --exclude=.git --exclude=deploy.tgz .
+        run: tar -czf /tmp/deploy.tgz --exclude=.git .
 
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
@@ -32,7 +32,7 @@ jobs:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: >
           sshpass -e scp -o StrictHostKeyChecking=accept-new -P 22
-          deploy.tgz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/deploy.tgz
+          /tmp/deploy.tgz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/deploy.tgz
 
       - name: Deploy on VPS
         env:
@@ -66,4 +66,3 @@ jobs:
           curl -sf http://127.0.0.1:8080/ -o /dev/null
           echo DEPLOY_OK
           REMOTE_EOF
-          
