@@ -52,8 +52,24 @@ function errorMessage(body: unknown, fallback: string): string {
     for (const key of ["message", "error", "errorMessage", "detail"]) {
       if (typeof rec[key] === "string" && rec[key]) return rec[key] as string;
     }
+    try {
+      const s = JSON.stringify(body);
+      if (s && s.length > 2) return s.slice(0, 240);
+    } catch {
+      /* fall through */
+    }
   }
   return fallback;
+}
+
+/** Strip the API base and query params from a request URL for logging. */
+function logPath(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.pathname || url;
+  } catch {
+    return url;
+  }
 }
 
 export class GeneracClient {
@@ -101,7 +117,7 @@ export class GeneracClient {
     const body = readJson(text);
     if (!res.ok) {
       throw new AuthError(
-        errorMessage(body, `Generac request failed (${res.status})`),
+        `Generac ${logPath(url)} → ${res.status}: ${errorMessage(body, "request failed")}`,
         res.status,
       );
     }
@@ -147,7 +163,10 @@ export class GeneracClient {
     });
     const body = readJson(await res.text());
     if (!res.ok) {
-      throw new AuthError(errorMessage(body, `Sign-in failed (${res.status})`), res.status);
+      throw new AuthError(
+        `Generac ${logPath(`${apiBase()}/sessions/v1/signin`)} → ${res.status}: ${errorMessage(body, "sign-in failed")}`,
+        res.status,
+      );
     }
     this.storeTokens(body);
   }
@@ -163,7 +182,10 @@ export class GeneracClient {
     });
     const body = readJson(await res.text());
     if (!res.ok) {
-      throw new AuthError(errorMessage(body, `Token refresh failed (${res.status})`), res.status);
+      throw new AuthError(
+        `Generac ${logPath(`${apiBase()}/sessions/v2/refresh/token`)} → ${res.status}: ${errorMessage(body, "token refresh failed")}`,
+        res.status,
+      );
     }
     this.storeTokens(body);
   }
