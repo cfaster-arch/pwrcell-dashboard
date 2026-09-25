@@ -110,9 +110,10 @@ Three briefs; every finding verified against installed dependency sources, not t
 
 ## Commit
 
-Committed on `multi-user-plan` and pushed to origin (see hash below).
+`21227b8` on `multi-user-plan`, pushed to `origin/multi-user-plan` 2026-09-25.
 This report file (`docs/build-reports/phase3-report.md`) is included in the commit
 per the 2026-09-25 builder dispatch protocol — the durable record.
+Production branch `pwrcell-dashboard-security-combo` untouched (tip `0054a6d`).
 
 ## Open items / follow-ups
 
