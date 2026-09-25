@@ -243,7 +243,7 @@ function DashboardView({
       className="min-h-dvh bg-bg text-fg"
       style={{ ...backgroundStyle(settings), ...(dimmed ? { filter: "brightness(0.55) saturate(0.85)" } : null) }}
     >
-      <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-5">
+      <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-5 2xl:max-w-[104rem] 2xl:px-10">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-start gap-1">
             <div className="-ml-2.5 mt-0.5">
@@ -251,7 +251,7 @@ function DashboardView({
             </div>
             <div>
               <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight text-fg sm:text-3xl">
+            <h1 className="mt-1 text-h1 font-medium tracking-tight text-fg">
               {point?.address ?? "Energy dashboard"}
             </h1>
             <p className="mt-1 text-sm text-muted">
@@ -262,7 +262,7 @@ function DashboardView({
           </div>
           <div className="flex items-end gap-5">
             <div className="text-right">
-              <p className="font-mono text-3xl leading-none font-medium tracking-tight tabular-nums sm:text-4xl" suppressHydrationWarning>
+              <p className="font-mono text-clock leading-none font-medium tracking-tight tabular-nums" suppressHydrationWarning>
                 {clockLabel(clockTs, tz)}
               </p>
               <p className="mt-1 text-sm text-muted" suppressHydrationWarning>

@@ -30,9 +30,14 @@
   --color-warn: #d4a056;
   --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --text-hero: clamp(2.6rem, 7.2vw, 4.4rem);
-  --text-tile-label: clamp(0.72rem, 1.1vw, 0.92rem);
-  --text-kicker: 0.68rem;
+  /* Fluid type: each token scales with the viewport so text grows with the
+     boxes that hold it, phone (390px) to wall display (1920px+). */
+  --text-hero: clamp(2.75rem, 4.5vw + 1.5rem, 7rem);
+  --text-tile-label: clamp(0.72rem, 0.6vw + 0.5rem, 1.1rem);
+  --text-kicker: clamp(0.62rem, 0.4vw + 0.5rem, 0.85rem);
+  --text-h1: clamp(1.4rem, 1.5vw + 0.9rem, 2.6rem);
+  --text-clock: clamp(1.75rem, 2vw + 1.1rem, 3.5rem);
+  --text-flow-value: clamp(1.05rem, 1.2vw + 0.7rem, 1.9rem);
   --radius-xs: 0.25rem;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -326,7 +331,7 @@
 }
 [data-personality="hardware"] article header::after {
   content: "_  \25A1  \D7";
-  font-size: 11px;
+  font-size: 0.72em;
   letter-spacing: 0.3em;
   color: #ffffff;
   background: rgb(255 255 255 / 0.16);
@@ -397,8 +402,13 @@
   to { transform: translateX(-112%); }
 }
 @media (prefers-reduced-motion: no-preference) {
+  [data-personality="hardware"] [role="status"] {
+    min-width: 0;
+    max-width: 58vw;
+  }
   [data-personality="hardware"] [role="status"] > p:nth-of-type(2) {
-    display: inline-block;
+    display: block;
+    overflow: hidden;
     white-space: nowrap;
     max-width: none;
     animation: xp-ticker 9s linear infinite;
@@ -429,15 +439,15 @@
   position: fixed;
   right: 12px;
   bottom: 172px;
-  max-width: 218px;
   background: #ffffe1;
   color: #000000;
   border: 1px solid #000000;
   box-shadow: 3px 3px 0 rgb(0 0 0 / 0.25);
   font-family: "Comic Neue", "Comic Sans MS", cursive;
-  font-size: 13px;
+  font-size: clamp(0.78rem, 0.8vw + 0.55rem, 1rem);
   line-height: 1.4;
   padding: 8px 10px;
+  max-width: min(62vw, 15rem);
   z-index: 61;
   pointer-events: none;
 }

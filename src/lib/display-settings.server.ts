@@ -70,7 +70,9 @@ function sanitize(raw: unknown, orgId?: string): DisplaySettings {
     showRates: r.showRates !== false,
     showCameras: r.showCameras !== false,
   };
-  if (s.backgroundMode === "image" && !s.hasBackgroundImage) s.backgroundMode = "default";
+  // NOTE: "image" mode is intentionally sticky even with no image uploaded yet —
+  // the settings UI shows the upload control exactly in that state, and
+  // backgroundStyle() falls back to the default backdrop until hasBackgroundImage.
   return s;
 }
 

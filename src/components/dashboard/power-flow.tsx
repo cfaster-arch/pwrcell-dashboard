@@ -56,7 +56,7 @@ function FlowNode({
     >
       <Icon className={cn("size-4", color)} aria-hidden="true" />
       <p className="mt-1 text-[10px] tracking-[0.16em] text-muted uppercase">{label}</p>
-      <p className={cn("font-mono text-lg font-medium tabular-nums", color)}>{value}</p>
+      <p className={cn("font-mono text-flow-value font-medium tabular-nums", color)}>{value}</p>
       <p className="text-[11px] text-subtle">{caption}</p>
     </div>
   );

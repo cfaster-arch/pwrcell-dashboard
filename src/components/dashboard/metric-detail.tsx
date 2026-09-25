@@ -224,7 +224,7 @@ function StatTile({ label, value, unit, accent }: { label: string; value: string
   return (
     <div className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
       <p className="text-xs font-medium tracking-[0.14em] text-muted uppercase">{label}</p>
-      <p className="mt-2 font-mono text-2xl font-medium tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
+      <p className="mt-2 font-mono text-h1 font-medium tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
         {value}
         {unit ? <span className="ml-1 text-sm font-normal text-muted">{unit}</span> : null}
       </p>

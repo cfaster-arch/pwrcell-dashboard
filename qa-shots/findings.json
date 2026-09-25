@@ -1,0 +1,332 @@
+[
+  {
+    "name": "signin submit leaves signin page",
+    "ok": true,
+    "detail": "http://127.0.0.1:8099/"
+  },
+  {
+    "name": "setup wizard already completed (skipped on repeat run)",
+    "ok": true,
+    "detail": "setupComplete persisted"
+  },
+  {
+    "name": "personality button 'standard' selects (phone)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'hardware' selects (phone)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'workbench' selects (phone)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'crt' selects (phone)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'standard' selects (desktop)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'hardware' selects (desktop)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'workbench' selects (desktop)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "personality button 'crt' selects (desktop)",
+    "ok": true,
+    "detail": "aria-checked=true"
+  },
+  {
+    "name": "no horizontal overflow at 390px",
+    "ok": true,
+    "detail": "overflow=0px"
+  },
+  {
+    "name": "no horizontal overflow at 1920px",
+    "ok": true,
+    "detail": "overflow=0px"
+  },
+  {
+    "name": "menu opens",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "menu closes via X button",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "menu closes via Escape",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "menu closes via overlay click",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "theme Light applies",
+    "ok": true,
+    "detail": "body bg=rgb(237, 240, 237)"
+  },
+  {
+    "name": "theme Dark applies",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "display mode 'Tiles' persists",
+    "ok": true,
+    "detail": "got tiles"
+  },
+  {
+    "name": "display mode 'Graphs' persists",
+    "ok": true,
+    "detail": "got graphs"
+  },
+  {
+    "name": "display mode 'Flow' persists",
+    "ok": true,
+    "detail": "got flow"
+  },
+  {
+    "name": "display mode 'Gauges' persists",
+    "ok": true,
+    "detail": "got gauges"
+  },
+  {
+    "name": "night dim On persists",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "night dim Off persists",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "background Color reveals swatches",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "background swatch applies + persists",
+    "ok": true,
+    "detail": "{\"m\":\"color\",\"c\":\"#3a1f2b\"}"
+  },
+  {
+    "name": "custom color picker present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "custom color applies + persists",
+    "ok": true,
+    "detail": "#123456"
+  },
+  {
+    "name": "BUGFIX: Image mode stays selected with no image uploaded",
+    "ok": true,
+    "detail": "got image"
+  },
+  {
+    "name": "upload control visible in Image mode",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "background image upload sets hasBackgroundImage",
+    "ok": true,
+    "detail": "{\"h\":true,\"m\":\"image\"}"
+  },
+  {
+    "name": "uploaded background serves over /api/display-background",
+    "ok": true,
+    "detail": "status=200"
+  },
+  {
+    "name": "background image persists after reload",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "remove background image clears it",
+    "ok": true,
+    "detail": "hasImage=false"
+  },
+  {
+    "name": "menu PWRview login opens dialog",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "PWRview save with bad creds shows error (no crash)",
+    "ok": true,
+    "detail": "Couldn't sign in to Generac: Generac /sessions/v1/signin → 404: NOT_FOUND"
+  },
+  {
+    "name": "PWRview dialog Close works",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "graph route /graphs/solar loads",
+    "ok": true,
+    "detail": "status=200"
+  },
+  {
+    "name": "graph solar range control present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "graph solar range control switches",
+    "ok": true,
+    "detail": "720 -> 10080"
+  },
+  {
+    "name": "graph route /graphs/home loads",
+    "ok": true,
+    "detail": "status=200"
+  },
+  {
+    "name": "graph home range control present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "graph home range control switches",
+    "ok": true,
+    "detail": "720 -> 10080"
+  },
+  {
+    "name": "graph route /graphs/battery loads",
+    "ok": true,
+    "detail": "status=200"
+  },
+  {
+    "name": "graph battery range control present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "graph battery range control switches",
+    "ok": true,
+    "detail": "720 -> 10080"
+  },
+  {
+    "name": "graph route /graphs/grid loads",
+    "ok": true,
+    "detail": "status=200"
+  },
+  {
+    "name": "graph grid range control present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "graph grid range control switches",
+    "ok": true,
+    "detail": "720 -> 10080"
+  },
+  {
+    "name": "bad graph metric 404s (no crash)",
+    "ok": true,
+    "detail": "status=404"
+  },
+  {
+    "name": "account page loads",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "account exposes change-password control",
+    "ok": true,
+    "detail": "link=true button=false"
+  },
+  {
+    "name": "change-password link navigates",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Alerts section present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Alerts has interactive controls",
+    "ok": true,
+    "detail": "toggles=6"
+  },
+  {
+    "name": "Rate plan section present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Rate plan has editable rate inputs",
+    "ok": true,
+    "detail": "inputs=6"
+  },
+  {
+    "name": "Rate plan Save enables when dirty",
+    "ok": true,
+    "detail": "was 0.46, set 0.47"
+  },
+  {
+    "name": "Rate plan save persists",
+    "ok": true,
+    "detail": "{\"peakStart\":\"16:00\",\"peakEnd\":\"21:00\",\"summerPeak\":0.47,\"summerOffPeak\":0.1,\"su"
+  },
+  {
+    "name": "Ring/cameras section present",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "dashboard tiles render",
+    "ok": true,
+    "detail": "articles=4"
+  },
+  {
+    "name": "menu link to /graphs/solar navigates",
+    "ok": true,
+    "detail": "http://127.0.0.1:8099/graphs/solar"
+  },
+  {
+    "name": "menu link to /graphs/home navigates",
+    "ok": true,
+    "detail": "http://127.0.0.1:8099/graphs/home"
+  },
+  {
+    "name": "sign out returns to signin",
+    "ok": true,
+    "detail": "http://127.0.0.1:8099/signin"
+  },
+  {
+    "name": "no unexpected browser console/page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no failed network requests (app endpoints)",
+    "ok": true,
+    "detail": ""
+  }
+]

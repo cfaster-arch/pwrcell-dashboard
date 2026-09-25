@@ -125,12 +125,12 @@ function MetricView({
 
   return (
     <div className="min-h-dvh bg-bg text-fg" style={backgroundStyle(settings)}>
-      <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5">
+      <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 2xl:max-w-[104rem] 2xl:px-10">
         <header className="flex items-center gap-3">
           <NavMenu onOpenLogin={() => setCredsOpen(true)} />
           <div>
             <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight text-fg sm:text-3xl">
+            <h1 className="mt-1 text-h1 font-medium tracking-tight text-fg">
               {cfg.label}
             </h1>
           </div>
