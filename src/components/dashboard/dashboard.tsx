@@ -12,6 +12,7 @@ import type { DisplayMode, DisplaySettings } from "@/lib/display-settings";
 import { backgroundStyle } from "@/lib/display-settings";
 import { cn } from "@/lib/utils";
 import { AlertBanner } from "./alerts-panel";
+import { CamerasSection } from "./cameras-section";
 import { CredentialsDialog } from "./credentials-dialog";
 import { ClassicTile } from "./classic-tile";
 import {
@@ -327,6 +328,8 @@ function DashboardView({
           />
         </section>
         )}
+
+        <CamerasSection />
 
         <SystemPanel point={point} />
       </div>

@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AlertsSection } from "./alerts-panel";
 import { TouSettingsSection } from "./cost-section";
+import { RingSetupSection } from "./ring-setup";
 import { SettingsPanel } from "./settings-panel";
 
 const LINKS = [
@@ -103,6 +104,8 @@ export function NavMenu({ timeZone }: { timeZone?: string | null }) {
             <AlertsSection timeZone={timeZone} />
             <div className="my-5 border-t border-border" role="separator" />
             <TouSettingsSection />
+            <div className="my-5 border-t border-border" role="separator" />
+            <RingSetupSection />
             <p className="mt-auto px-2 pt-4 text-xs leading-relaxed text-subtle">
               Wall-mounted dashboard
               <br />

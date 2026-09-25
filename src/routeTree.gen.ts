@@ -20,9 +20,11 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiHomesRouteImport } from './routes/api/homes'
 import { Route as ApiLiveRouteImport } from './routes/api/live'
+import { Route as ApiRingRouteImport } from './routes/api/ring'
 import { Route as ApiSeriesRouteImport } from './routes/api/series'
 import { Route as ApiTouRouteImport } from './routes/api/tou'
 import { Route as GraphsMetricRouteImport } from './routes/graphs/$metric'
+import { Route as ApiRtcSplatRouteImport } from './routes/api/rtc.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,6 +81,11 @@ const ApiLiveRoute = ApiLiveRouteImport.update({
   path: '/api/live',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRingRoute = ApiRingRouteImport.update({
+  id: '/api/ring',
+  path: '/api/ring',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSeriesRoute = ApiSeriesRouteImport.update({
   id: '/api/series',
   path: '/api/series',
@@ -94,6 +101,11 @@ const GraphsMetricRoute = GraphsMetricRouteImport.update({
   path: '/graphs/$metric',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRtcSplatRoute = ApiRtcSplatRouteImport.update({
+  id: '/api/rtc/$',
+  path: '/api/rtc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,9 +119,11 @@ export interface FileRoutesByFullPath {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
+  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/graphs/$metric': typeof GraphsMetricRoute
+  '/api/rtc/$': typeof ApiRtcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,9 +137,11 @@ export interface FileRoutesByTo {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
+  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/graphs/$metric': typeof GraphsMetricRoute
+  '/api/rtc/$': typeof ApiRtcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,9 +156,11 @@ export interface FileRoutesById {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
+  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/graphs/$metric': typeof GraphsMetricRoute
+  '/api/rtc/$': typeof ApiRtcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -158,9 +176,11 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
+    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/graphs/$metric'
+    | '/api/rtc/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -174,9 +194,11 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
+    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/graphs/$metric'
+    | '/api/rtc/$'
   id:
     | '__root__'
     | '/'
@@ -190,9 +212,11 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
+    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/graphs/$metric'
+    | '/api/rtc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -207,9 +231,11 @@ export interface RootRouteChildren {
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiHomesRoute: typeof ApiHomesRoute
   ApiLiveRoute: typeof ApiLiveRoute
+  ApiRingRoute: typeof ApiRingRoute
   ApiSeriesRoute: typeof ApiSeriesRoute
   ApiTouRoute: typeof ApiTouRoute
   GraphsMetricRoute: typeof GraphsMetricRoute
+  ApiRtcSplatRoute: typeof ApiRtcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -291,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ring': {
+      id: '/api/ring'
+      path: '/api/ring'
+      fullPath: '/api/ring'
+      preLoaderRoute: typeof ApiRingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/series': {
       id: '/api/series'
       path: '/api/series'
@@ -312,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GraphsMetricRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/rtc/$': {
+      id: '/api/rtc/$'
+      path: '/api/rtc/$'
+      fullPath: '/api/rtc/$'
+      preLoaderRoute: typeof ApiRtcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -327,9 +367,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHistoryRoute: ApiHistoryRoute,
   ApiHomesRoute: ApiHomesRoute,
   ApiLiveRoute: ApiLiveRoute,
+  ApiRingRoute: ApiRingRoute,
   ApiSeriesRoute: ApiSeriesRoute,
   ApiTouRoute: ApiTouRoute,
   GraphsMetricRoute: GraphsMetricRoute,
+  ApiRtcSplatRoute: ApiRtcSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
