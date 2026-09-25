@@ -140,6 +140,49 @@
   animation: dash-flow 1.2s linear infinite reverse;
 }
 
+/* Traveling dashes for the power-flow diagram. The dash color comes from
+   --flow-color and the speed from animation-duration, both set inline. */
+.flow-dash-v {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--flow-color) 0 5px,
+    transparent 5px 14px
+  );
+  animation: flow-dash-y 1s linear infinite;
+}
+
+.flow-dash-h {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--flow-color) 0 5px,
+    transparent 5px 14px
+  );
+  animation: flow-dash-x 1s linear infinite;
+}
+
+.flow-rev {
+  animation-direction: reverse;
+}
+
+@keyframes flow-dash-y {
+  to {
+    background-position-y: 14px;
+  }
+}
+
+@keyframes flow-dash-x {
+  to {
+    background-position-x: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-dash-v,
+  .flow-dash-h {
+    animation: none;
+  }
+}
+
 .status-dot {
   animation: pulse-dot 2.4s ease-in-out infinite;
 }

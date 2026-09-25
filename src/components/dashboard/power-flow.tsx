@@ -1,7 +1,22 @@
+import type { CSSProperties } from "react";
 import { Battery, Home, SunMedium, UtilityPole } from "lucide-react";
 import { batteryDirection, formatKw, gridDirection } from "@/lib/pwrcell/format";
 import type { PowerPoint } from "@/lib/pwrcell/types";
 import { cn } from "@/lib/utils";
+
+/** Watts above which a branch counts as carrying flow. */
+const FLOW_W = 50;
+
+type Tone = "solar" | "home" | "battery" | "grid";
+
+/**
+ * Seconds per dash cycle — bigger flows visibly move faster.
+ * ~0.35s at 4.5kW+, stretching to 2.5s near the idle threshold.
+ */
+function flowDuration(watts: number): number {
+  const kw = Math.max(Math.abs(watts) / 1000, 0.05);
+  return Math.min(2.5, Math.max(0.35, 1.6 / kw));
+}
 
 function FlowNode({
   label,
@@ -13,7 +28,7 @@ function FlowNode({
   label: string;
   value: string;
   caption: string;
-  tone: "solar" | "home" | "battery" | "grid";
+  tone: Tone;
   icon: typeof SunMedium;
 }) {
   const color =
@@ -33,7 +48,12 @@ function FlowNode({
           ? "bg-grid-dim"
           : "bg-home-dim";
   return (
-    <div className={cn("flex min-h-20 flex-col items-center justify-center rounded-lg px-3 py-2", wash)}>
+    <div
+      className={cn(
+        "flex min-h-20 flex-col items-center justify-center rounded-lg px-3 py-2",
+        wash,
+      )}
+    >
       <Icon className={cn("size-4", color)} aria-hidden="true" />
       <p className="mt-1 text-[10px] tracking-[0.16em] text-muted uppercase">{label}</p>
       <p className={cn("font-mono text-lg font-medium tabular-nums", color)}>{value}</p>
@@ -42,30 +62,49 @@ function FlowNode({
   );
 }
 
-function Connector({
-  active,
-  reverse,
+/**
+ * One branch of the flow diagram. A dim track is always drawn; when the
+ * branch is active, dashes stream along it — down/right for positive watts,
+ * up/left for negative, faster for bigger flows.
+ */
+function FlowSegment({
+  watts,
   tone,
+  orientation,
   className,
 }: {
-  active: boolean;
-  reverse?: boolean;
-  tone: "solar" | "battery" | "grid";
+  /** Signed watts. Positive flows down (vertical) or right (horizontal). */
+  watts: number;
+  tone: Exclude<Tone, "home">;
+  orientation: "v" | "h";
   className?: string;
 }) {
-  const color =
-    tone === "solar" ? "bg-solar" : tone === "battery" ? "bg-battery" : "bg-grid";
+  const active = Math.abs(watts) > FLOW_W;
+  const forward = watts >= 0;
+  const track =
+    tone === "solar" ? "bg-solar-dim" : tone === "battery" ? "bg-battery-dim" : "bg-grid-dim";
   return (
-    <div className={cn("relative flex items-center justify-center", className)} aria-hidden="true">
-      <span className={cn("h-full w-px rounded-full", active ? color : "bg-border-strong")} />
+    <div className={cn("relative", className)} aria-hidden="true">
+      <span
+        className={cn(
+          "absolute inset-0 m-auto rounded-full",
+          active ? track : "bg-border-strong",
+          orientation === "v" ? "h-full w-px" : "h-px w-full",
+        )}
+      />
       {active ? (
         <span
           className={cn(
-            "absolute size-1.5 rounded-full",
-            color,
-            reverse ? "bottom-1" : "top-1",
-            "status-dot",
+            "absolute inset-0 m-auto rounded-full",
+            orientation === "v" ? "flow-dash-v h-full w-[3px]" : "flow-dash-h h-[3px] w-full",
+            !forward && "flow-rev",
           )}
+          style={
+            {
+              "--flow-color": `var(--color-${tone})`,
+              animationDuration: `${flowDuration(watts).toFixed(2)}s`,
+            } as CSSProperties
+          }
         />
       ) : null}
     </div>
@@ -81,23 +120,34 @@ export function PowerFlow({ point, className }: { point: PowerPoint | null; clas
   const gridDir = gridDirection(grid);
 
   return (
-    <section className={cn("flex min-h-64 flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5", className)}>
+    <section
+      className={cn(
+        "flex min-h-64 flex-col rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:p-5",
+        className,
+      )}
+    >
       <header className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">Power flow</h2>
+        <h2 className="text-tile-label font-medium tracking-[0.16em] text-muted uppercase">
+          Power flow
+        </h2>
         <p className="text-xs tracking-wide text-subtle">Live path of watts</p>
       </header>
-      <div className="grid flex-1 grid-cols-3 grid-rows-[auto_1.5rem_auto] items-stretch gap-x-2">
+      <div className="grid flex-1 grid-cols-[1fr_2.5rem_1fr_2.5rem_1fr] grid-rows-[auto_2rem_auto] items-stretch">
+        <div />
         <div />
         <FlowNode
           label="Solar"
           value={formatKw(solar)}
-          caption={solar > 50 ? "producing" : "idle"}
+          caption={solar > FLOW_W ? "producing" : "idle"}
           tone="solar"
           icon={SunMedium}
         />
         <div />
         <div />
-        <Connector active={solar > 50} tone="solar" className="h-6" />
+        <div />
+        <div />
+        <FlowSegment watts={solar} tone="solar" orientation="v" className="h-8" />
+        <div />
         <div />
         <FlowNode
           label="Grid"
@@ -106,13 +156,11 @@ export function PowerFlow({ point, className }: { point: PowerPoint | null; clas
           tone="grid"
           icon={UtilityPole}
         />
-        <FlowNode
-          label="Home"
-          value={formatKw(home)}
-          caption="using"
-          tone="home"
-          icon={Home}
-        />
+        {/* positive grid = importing: flows right, toward home */}
+        <FlowSegment watts={grid} tone="grid" orientation="h" />
+        <FlowNode label="Home" value={formatKw(home)} caption="using" tone="home" icon={Home} />
+        {/* positive battery = discharging: flows left, toward home — so negate */}
+        <FlowSegment watts={-battery} tone="battery" orientation="h" />
         <FlowNode
           label="Battery"
           value={formatKw(battery)}
