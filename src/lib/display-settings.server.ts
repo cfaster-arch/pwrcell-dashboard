@@ -13,6 +13,7 @@ import {
   type DisplayMode,
   type DisplaySettings,
   type GaugeStyle,
+  type PersonalityName,
   type ThemeName,
 } from "./display-settings";
 
@@ -33,6 +34,10 @@ function safeOrg(orgId: string): string {
 function sanitize(raw: unknown, orgId?: string): DisplaySettings {
   const r = (raw ?? {}) as Partial<DisplaySettings>;
   const theme: ThemeName = r.theme === "light" ? "light" : "dark";
+  const personality: PersonalityName =
+    r.personality === "hardware" || r.personality === "workbench" || r.personality === "crt"
+      ? r.personality
+      : "standard";
   const gaugeStyle: GaugeStyle = r.gaugeStyle === "tiles" ? "tiles" : "analog";
   // displayMode supersedes gaugeStyle; old files without displayMode migrate
   // from the binary toggle (tiles -> "tiles", anything else -> "gauges").
@@ -53,6 +58,7 @@ function sanitize(raw: unknown, orgId?: string): DisplaySettings {
       : DEFAULT_DISPLAY_SETTINGS.backgroundColor;
   const s: DisplaySettings = {
     theme,
+    personality,
     displayMode,
     // Keep the deprecated field in sync so downgrades still read something sane.
     gaugeStyle: displayMode === "tiles" ? "tiles" : "analog",

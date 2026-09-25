@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 
 export type ThemeName = "dark" | "light";
+/** Visual personality — a full design identity layered over the theme. */
+export type PersonalityName = "standard" | "hardware" | "workbench" | "crt";
 export type GaugeStyle = "analog" | "tiles";
 /** Exclusive main-view mode. Supersedes the old binary `gaugeStyle` toggle. */
 export type DisplayMode = "graphs" | "tiles" | "gauges" | "flow";
@@ -8,6 +10,8 @@ export type BackgroundMode = "default" | "color" | "image";
 
 export interface DisplaySettings {
   theme: ThemeName;
+  /** Visual personality. Overrides the palette/typography when not "standard". */
+  personality: PersonalityName;
   /** Which main view is shown. Migrated from `gaugeStyle` when absent. */
   displayMode: DisplayMode;
   /**
@@ -32,6 +36,7 @@ export interface DisplaySettings {
 
 export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   theme: "dark",
+  personality: "standard",
   displayMode: "gauges",
   gaugeStyle: "analog",
   backgroundMode: "default",

@@ -53,7 +53,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   const settings = Route.useLoaderData();
   return (
-    <html lang="en" className="antialiased" data-theme={settings.theme} suppressHydrationWarning>
+    <html lang="en" className="antialiased" data-theme={settings.theme} data-personality={settings.personality} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

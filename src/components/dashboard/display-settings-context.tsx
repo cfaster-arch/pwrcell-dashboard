@@ -41,10 +41,11 @@ export function DisplaySettingsProvider({
     };
   }, []);
 
-  // Keep the theme attribute in sync (covers changes from another tab/device).
+  // Keep the theme + personality attributes in sync (covers changes from another tab/device).
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
-  }, [settings.theme]);
+    document.documentElement.dataset.personality = settings.personality;
+  }, [settings.theme, settings.personality]);
 
   // Re-fetch once on mount so a second device sees the latest saved settings.
   useEffect(() => {

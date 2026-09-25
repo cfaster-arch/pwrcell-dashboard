@@ -1,7 +1,101 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { PersonalityName } from "@/lib/display-settings";
 import { useDisplaySettings } from "./display-settings-context";
+
+const PERSONALITIES: Array<{
+  value: PersonalityName;
+  label: string;
+  blurb: string;
+  swatch: string;
+  fg: string;
+  fontFamily: string;
+}> = [
+  {
+    value: "standard",
+    label: "Standard",
+    blurb: "The clean default",
+    swatch: "linear-gradient(135deg,#141816 60%,#1c211e 60%)",
+    fg: "#e8ede9",
+    fontFamily: "inherit",
+  },
+  {
+    value: "hardware",
+    label: "Hardware",
+    blurb: "Brushed metal panel",
+    swatch:
+      "repeating-linear-gradient(90deg,#2a2e33 0 2px,#1d2124 2px 4px)",
+    fg: "#e8a33d",
+    fontFamily: "'Barlow Condensed', sans-serif",
+  },
+  {
+    value: "workbench",
+    label: "Workbench",
+    blurb: "Shop notebook",
+    swatch:
+      "repeating-linear-gradient(0deg,transparent 0 7px,rgba(236,229,211,.25) 7px 8px),repeating-linear-gradient(90deg,transparent 0 7px,rgba(236,229,211,.25) 7px 8px),#211d16",
+    fg: "#ece5d3",
+    fontFamily: "'Space Mono', monospace",
+  },
+  {
+    value: "crt",
+    label: "CRT",
+    blurb: "Phosphor terminal",
+    swatch:
+      "repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.55) 3px 5px),#04140a",
+    fg: "#4dff7c",
+    fontFamily: "'VT323', monospace",
+  },
+];
+
+function PersonalityPicker({
+  value,
+  onChange,
+}: {
+  value: PersonalityName;
+  onChange: (v: PersonalityName) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-medium tracking-[0.14em] text-muted uppercase">
+        Personality
+      </p>
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Personality">
+        {PERSONALITIES.map((p) => {
+          const active = value === p.value;
+          return (
+            <button
+              key={p.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(p.value)}
+              className={cn(
+                "overflow-hidden rounded-lg text-left transition-transform duration-150 ease-out active:scale-[0.98]",
+                active
+                  ? "ring-2 ring-fg ring-offset-2 ring-offset-bg"
+                  : "shadow-[var(--shadow-border)]",
+              )}
+            >
+              <span
+                className="flex h-14 items-center justify-center text-xl"
+                style={{ background: p.swatch, color: p.fg, fontFamily: p.fontFamily }}
+                aria-hidden="true"
+              >
+                8.42
+              </span>
+              <span className="block bg-surface-2 px-2.5 py-2">
+                <span className="block text-sm font-semibold text-fg">{p.label}</span>
+                <span className="block text-xs text-subtle">{p.blurb}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const COLOR_PRESETS = ["#0b0d0c", "#1a2f24", "#1f2a44", "#3a1f2b", "#0e3a3a", "#2b2b2b"];
 
@@ -117,15 +211,31 @@ export function SettingsPanel() {
           Display
         </p>
         <div className="flex flex-col gap-4">
-          <Segmented
-            label="Theme"
-            value={settings.theme}
-            onChange={(theme) => void update({ theme })}
-            options={[
-              { value: "dark", label: "Dark" },
-              { value: "light", label: "Light" },
-            ]}
+          <PersonalityPicker
+            value={settings.personality}
+            onChange={(personality) => void update({ personality })}
           />
+          <div
+            className={cn(
+              settings.personality !== "standard" && "pointer-events-none opacity-45",
+            )}
+            aria-disabled={settings.personality !== "standard"}
+            title={
+              settings.personality !== "standard"
+                ? "The active personality sets its own palette"
+                : undefined
+            }
+          >
+            <Segmented
+              label="Theme"
+              value={settings.theme}
+              onChange={(theme) => void update({ theme })}
+              options={[
+                { value: "dark", label: "Dark" },
+                { value: "light", label: "Light" },
+              ]}
+            />
+          </div>
           <Segmented
             label="Display mode"
             value={settings.displayMode}

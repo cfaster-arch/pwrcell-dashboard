@@ -24,6 +24,14 @@ export const Route = createFileRoute("/api/display")({
         const patch: Record<string, unknown> = {};
         if (body.theme === "dark" || body.theme === "light") patch.theme = body.theme;
         if (
+          body.personality === "standard" ||
+          body.personality === "hardware" ||
+          body.personality === "workbench" ||
+          body.personality === "crt"
+        ) {
+          patch.personality = body.personality;
+        }
+        if (
           body.displayMode === "graphs" ||
           body.displayMode === "tiles" ||
           body.displayMode === "gauges" ||
