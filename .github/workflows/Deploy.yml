@@ -24,21 +24,22 @@ jobs:
       - name: Package
         run: tar -czf /tmp/deploy.tgz --exclude=.git .
 
-      - name: Install sshpass
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+      - name: Set up deploy SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/pwrcell_deploy_key
+          chmod 600 ~/.ssh/pwrcell_deploy_key
 
       - name: Copy bundle to VPS
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: >
-          sshpass -e scp -o StrictHostKeyChecking=accept-new -P 22
+          scp -o StrictHostKeyChecking=accept-new -P 22 -i ~/.ssh/pwrcell_deploy_key
           /tmp/deploy.tgz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/deploy.tgz
 
       - name: Deploy on VPS
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=accept-new -p 22 \
+          ssh -o StrictHostKeyChecking=accept-new -p 22 -i ~/.ssh/pwrcell_deploy_key \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'REMOTE_EOF'
           set -e
           cd /opt/pwrcell
@@ -66,3 +67,7 @@ jobs:
           curl -sf http://127.0.0.1:8080/ -o /dev/null
           echo DEPLOY_OK
           REMOTE_EOF
+
+      - name: Clean up deploy key
+        if: always()
+        run: rm -f ~/.ssh/pwrcell_deploy_key
