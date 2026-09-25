@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+.output/
+dist/
+
+# Runtime / secrets (never commit)
+dashboard.env
+*.env
+display-settings.json
+display-background.*
+data/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Screenshots from local QA
+screenshots/

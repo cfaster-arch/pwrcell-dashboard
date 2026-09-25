@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b0d0c;
+  --color-surface: #141816;
+  --color-surface-2: #1c211e;
+  --color-fg: #e8ede9;
+  --color-muted: #8b958e;
+  --color-subtle: #6a736e;
+  --color-border: rgb(232 237 233 / 0.1);
+  --color-border-strong: rgb(232 237 233 / 0.18);
+  --color-solar: #e0a04a;
+  --color-solar-dim: rgb(224 160 74 / 0.16);
+  --color-home: #e8ede9;
+  --color-home-dim: rgb(232 237 233 / 0.1);
+  --color-battery: #3aae9a;
+  --color-battery-dim: rgb(58 174 154 / 0.16);
+  --color-grid: #6d93c2;
+  --color-grid-dim: rgb(109 147 194 / 0.16);
+  --color-danger: #d4675a;
+  --color-ok: #5dba7a;
+  --color-warn: #d4a056;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --text-hero: clamp(2.6rem, 7.2vw, 4.4rem);
+  --text-tile-label: clamp(0.72rem, 1.1vw, 0.92rem);
+  --text-kicker: 0.68rem;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-border: 0 0 0 1px rgb(232 237 233 / 0.08);
+}
+
+:root {
+  --gauge-tick: #e8ede9;
+  --gauge-label: #8b958e;
+  --gauge-track: rgb(232 237 233 / 0.14);
+  --gauge-hub: #1c211e;
+  --gauge-well: #161a18;
+  --gauge-well-border: rgb(232 237 233 / 0.12);
+  --gauge-well-text: #e8ede9;
+}
+
+[data-theme="light"] {
+  --color-bg: #edf0ed;
+  --color-surface: #ffffff;
+  --color-surface-2: #e2e8e2;
+  --color-fg: #141816;
+  --color-muted: #5d665f;
+  --color-subtle: #8b958e;
+  --color-border: rgb(20 24 22 / 0.1);
+  --color-border-strong: rgb(20 24 22 / 0.2);
+  --color-solar: #b87a1f;
+  --color-solar-dim: rgb(184 122 31 / 0.16);
+  --color-home: #3a443d;
+  --color-home-dim: rgb(58 68 61 / 0.12);
+  --color-battery: #1e8a76;
+  --color-battery-dim: rgb(30 138 118 / 0.16);
+  --color-grid: #3d6ca8;
+  --color-grid-dim: rgb(61 108 168 / 0.16);
+  --color-danger: #b84a3e;
+  --color-ok: #2f8a52;
+  --color-warn: #b87a1f;
+  --shadow-border: 0 0 0 1px rgb(20 24 22 / 0.08);
+  --gauge-tick: #141816;
+  --gauge-label: #5d665f;
+  --gauge-track: rgb(20 24 22 / 0.14);
+  --gauge-hub: #dde4df;
+  --gauge-well: #101413;
+  --gauge-well-border: rgb(232 237 233 / 0.14);
+  --gauge-well-text: #e8ede9;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.flow-line {
+  stroke-dasharray: 6 10;
+  animation: dash-flow 1.2s linear infinite;
+}
+
+.flow-line-rev {
+  stroke-dasharray: 6 10;
+  animation: dash-flow 1.2s linear infinite reverse;
+}
+
+.status-dot {
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}

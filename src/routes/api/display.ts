@@ -1,0 +1,47 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { loadDisplaySettings, saveDisplaySettings } from "@/lib/display-settings.server";
+
+const NO_STORE = { "cache-control": "no-store" };
+
+export const Route = createFileRoute("/api/display")({
+  server: {
+    handlers: {
+      GET: async () => {
+        return Response.json(loadDisplaySettings(), { headers: NO_STORE });
+      },
+      PUT: async ({ request }) => {
+        let body: Record<string, unknown> = {};
+        try {
+          body = (await request.json()) as Record<string, unknown>;
+        } catch {
+          body = {};
+        }
+        const patch: Record<string, unknown> = {};
+        if (body.theme === "dark" || body.theme === "light") patch.theme = body.theme;
+        if (
+          body.displayMode === "graphs" ||
+          body.displayMode === "tiles" ||
+          body.displayMode === "gauges" ||
+          body.displayMode === "flow"
+        ) {
+          patch.displayMode = body.displayMode;
+        } else if (body.gaugeStyle === "analog" || body.gaugeStyle === "tiles") {
+          // Legacy binary toggle: map onto the 3-way mode.
+          patch.displayMode = body.gaugeStyle === "tiles" ? "tiles" : "gauges";
+        }
+        if (
+          body.backgroundMode === "default" ||
+          body.backgroundMode === "color" ||
+          body.backgroundMode === "image"
+        ) {
+          patch.backgroundMode = body.backgroundMode;
+        }
+        if (typeof body.backgroundColor === "string" && /^#[0-9a-fA-F]{6}$/.test(body.backgroundColor)) {
+          patch.backgroundColor = body.backgroundColor;
+        }
+        const next = saveDisplaySettings(patch);
+        return Response.json(next, { headers: NO_STORE });
+      },
+    },
+  },
+});
