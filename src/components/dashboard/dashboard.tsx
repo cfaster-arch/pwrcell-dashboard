@@ -144,44 +144,6 @@ function MetricTile({
   );
 }
 
-const DISPLAY_MODES: Array<{ value: DisplayMode; label: string }> = [
-  { value: "gauges", label: "Gauges" },
-  { value: "tiles", label: "Tiles" },
-  { value: "graphs", label: "Graphs" },
-  { value: "flow", label: "Flow" },
-];
-
-/** Exclusive display-mode switcher: exactly one of Graphs / Tiles / Gauges. */
-function ModeSwitcher() {
-  const { settings, update } = useDisplaySettings();
-  return (
-    <div
-      className="flex rounded-xl bg-surface p-1 shadow-[var(--shadow-border)]"
-      role="tablist"
-      aria-label="Display mode"
-    >
-      {DISPLAY_MODES.map((m) => (
-        <button
-          key={m.value}
-          type="button"
-          role="tab"
-          aria-selected={settings.displayMode === m.value}
-          onClick={() => void update({ displayMode: m.value })}
-          className={cn(
-            "min-h-11 rounded-lg px-5 text-sm font-medium tracking-wide transition-[background-color,color,transform] duration-150 ease-out",
-            "active:scale-[0.97]",
-            settings.displayMode === m.value
-              ? "bg-fg text-bg"
-              : "text-muted hover:text-fg",
-          )}
-        >
-          {m.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function DashboardView({
   initialLive,
   initialSeries,
@@ -300,10 +262,6 @@ function DashboardView({
             </div>
           </div>
         </header>
-
-        <div className="flex justify-center">
-          <ModeSwitcher />
-        </div>
 
         <AlertBanner timeZone={tz} />
 
