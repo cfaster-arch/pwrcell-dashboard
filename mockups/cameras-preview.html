@@ -49,8 +49,11 @@
   .switch.on{background:var(--green);}
   .switch.on::after{left:25px;}
   /* metrics */
-  #metrics{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:4px 16px 16px;}
-  .tile{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px;}
+  main{min-height:calc(100vh - 69px); display:flex; flex-direction:column;}
+  #metrics{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:4px 16px 16px;
+    align-content:stretch;}
+  .tile{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px;
+    display:flex; flex-direction:column; justify-content:center; min-height:110px;}
   .tile .lab{font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em;}
   .tile .val{font-size:34px; font-weight:700; margin:6px 0 2px; font-variant-numeric:tabular-nums;}
   .tile .sub{font-size:13px; color:var(--dim);}
@@ -59,18 +62,19 @@
   .tile.batt{border-left:4px solid var(--green);} .tile.batt .val{color:var(--green);}
   .tile.grid{border-left:4px solid #b48cff;} .tile.grid .val{color:#b48cff;}
   /* cameras */
-  #camsec{padding:0 16px 24px; display:none;}
-  #camsec.show{display:block; animation:slidein .25s ease;}
+  #camsec{padding:0 16px 16px; display:none; flex:1.6; flex-direction:column; min-height:0;}
+  #camsec.show{display:flex; animation:slidein .25s ease;}
   @keyframes slidein{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
   #camsec h2{font-size:15px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; margin:4px 0 12px;}
   .camsel{display:flex; gap:8px; margin-bottom:12px;}
   .camsel button{border:1px solid var(--line); background:var(--panel); color:var(--dim);
     border-radius:999px; padding:8px 20px; font-size:14px; cursor:pointer;}
   .camsel button.on{background:var(--blue); border-color:var(--blue); color:#06121f; font-weight:600;}
-  .cams{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .cams{display:grid; grid-template-columns:1fr 1fr; gap:12px; flex:1; min-height:0;}
   .cams.single{grid-template-columns:1fr;}
   @media(max-width:760px){.cams{grid-template-columns:1fr;} #metrics{grid-template-columns:1fr 1fr;}}
-  .cam{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+  .cam{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    display:flex; flex-direction:column; min-height:0;}
   .cam .ch{display:flex; align-items:center; gap:8px; padding:10px 14px;}
   .cam .ch b{font-size:15px;}
   .badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; letter-spacing:.05em;}
@@ -81,7 +85,7 @@
   .badge.snap{background:#2a3547; color:var(--dim);}
   .badge.off{background:#222b3a; color:#5b6678;}
   .battag{margin-left:auto; font-size:12px; color:var(--dim);}
-  .view{position:relative; aspect-ratio:16/9; background:#05070b;}
+  .view{position:relative; background:#05070b; flex:1; min-height:200px;}
   .view canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
   .view .ts{position:absolute; right:10px; bottom:8px; font-size:12px; color:#fff;
     background:rgba(0,0,0,.55); padding:2px 8px; border-radius:6px; font-variant-numeric:tabular-nums;}
