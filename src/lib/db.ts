@@ -94,6 +94,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
+    neonPool = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -192,6 +193,9 @@ async function createPgliteSql(): Promise<Sql> {
 
 let sqlPromise: Promise<Sql> | null = null;
 
+/** Keep the Neon pool so closeDb() can drain it on shutdown. */
+let neonPool: import("pg").Pool | null = null;
+
 async function createSql(): Promise<Sql> {
   if (typeof window !== "undefined") {
     throw new Error(
@@ -258,4 +262,58 @@ if (typeof window === "undefined" && dbSource === "pglite") {
     console.error("[db] PGLite bootstrap failed:", err);
     throw err;
   });
+}
+
+/**
+ * Graceful shutdown: close the database cleanly on SIGTERM/SIGINT.
+ *
+ * PGlite keeps a real Postgres WAL — an unclean kill risks torn state, and
+ * past PGlite versions corrupted on unclean shutdown. The systemd service
+ * must let SIGTERM propagate (no `kill -9`); this handler closes the embedded
+ * DB (or drains the Neon pool) before the process exits.
+ */
+export async function closeDb(): Promise<void> {
+  if (dbSource === "neon") {
+    if (neonPool) {
+      const pool = neonPool;
+      neonPool = null;
+      try {
+        await pool.end();
+      } catch {
+        /* already closing */
+      }
+    }
+    return;
+  }
+  const pg = await globalRef.__pgliteInstance__?.catch(() => undefined);
+  globalRef.__pgliteInstance__ = undefined;
+  sqlPromise = null;
+  if (pg) {
+    try {
+      await pg.close();
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
+const globalShutdown = globalThis as typeof globalThis & {
+  __pwrcellDbShutdownArmed__?: boolean;
+};
+if (
+  typeof window === "undefined" &&
+  typeof process !== "undefined" &&
+  !globalShutdown.__pwrcellDbShutdownArmed__
+) {
+  globalShutdown.__pwrcellDbShutdownArmed__ = true;
+  const onSignal = () => {
+    // Give closeDb() a bounded window, then force-exit so systemd never hangs.
+    const force = setTimeout(() => process.exit(1), 8000);
+    (force as unknown as { unref?: () => void }).unref?.();
+    void closeDb()
+      .catch(() => undefined)
+      .finally(() => process.exit(0));
+  };
+  process.on("SIGTERM", onSignal);
+  process.on("SIGINT", onSignal);
 }

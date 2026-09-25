@@ -53,10 +53,16 @@ These six surfaces are global today and must be scoped per org:
 ## 3. Phased build plan
 
 ### Phase 0 — Persist the database (1–2 h)
-- [ ] Point PGlite at a persistent `dataDir` (`src/lib/db.ts` already supports it —
-      verify it is actually enabled in the VPS deploy; currently in-memory).
-- [ ] Add the data dir to the encrypted off-site backup job.
-- [ ] Restart-test: data survives a service restart.
+- [x] Point PGlite at a persistent `dataDir` (`src/lib/db.ts` already supports it —
+      verified enabled: `dataDir` is always set, override via `PGLITE_DIR`).
+- [x] Env-selectable DB client already exists (`DATABASE_URL` → Neon/`pg`, else
+      PGlite) — this is the Postgres escape hatch; no rewrite needed later.
+- [x] Graceful shutdown: `closeDb()` + SIGTERM/SIGINT handlers in `src/lib/db.ts`
+      (`await pg.close()`, bounded 8s force-exit; systemd must not `kill -9`).
+- [ ] Add the data dir to the encrypted off-site backup job → **deploy checklist**
+      (§6), dump-based, restore-tested.
+- [ ] Restart-test: data survives a service restart → covered during Phase 1+
+      integration testing (dev server start/stop cycles with auth tables).
 
 ### Phase 1 — Auth core (3–4 h)
 - [ ] Install `better-auth`, `drizzle-orm`, `drizzle-kit`; generate schema; run migrations.
@@ -118,3 +124,28 @@ These six surfaces are global today and must be scoped per org:
 - Long-lived *user* sessions on kiosks — a stolen tablet cookie with a full user
   session is far worse than a revocable scoped device key.
 - Public self-registration.
+
+## 6. Deploy checklist (production cutover — VPS work, NOT done on this branch)
+
+Do these at deploy time, after staging-first verification of the full
+sign-in → org scoping → kiosk pairing flow:
+
+- [ ] **Remove nginx Basic Auth** (it is replaced by app auth — never stack both).
+- [ ] Add the PGlite `dataDir` (and the DEK file, encrypted separately) to the
+      encrypted off-site backup job; backups must be **dump-based**
+      (filesystem copies of a live dataDir risk torn backups); restore-test quarterly.
+- [ ] systemd unit: `PGLITE_DIR` pointing at the persistent path, `DEK_FILE`
+      pointing at the 0600 key file; `KillMode=mixed`, no `kill -9` (SIGTERM must
+      reach Node so `closeDb()` runs).
+- [ ] Generate the DEK once (`node scripts/gen-dek.mjs` — to be added), store at
+      the `DEK_FILE` path with `0600` owned by the service user, **outside the repo**.
+- [ ] Run `node scripts/seed-default-org.mjs` (to be added) to create the platform
+      admin + default org, then backfill/migrate existing history into it.
+- [ ] Set `BETTER_AUTH_SECRET` to a long random value (env, never in the repo).
+- [ ] Verify: sign-in, admin panel, per-org isolation, kiosk pairing, then DNS cutover.
+
+## Build log
+
+- **Phase 0**: `src/lib/db.ts` already had persistent `dataDir` and the
+  `DATABASE_URL` escape hatch — only graceful shutdown (`closeDb()` +
+  SIGTERM/SIGINT handlers) was added. No schema changes.
