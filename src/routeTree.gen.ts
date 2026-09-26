@@ -14,6 +14,7 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
 import { Route as ApiAlertsRouteImport } from './routes/api/alerts'
 import { Route as ApiAlertsSettingsRouteImport } from './routes/api/alerts-settings'
+import { Route as ApiAuthConfigRouteImport } from './routes/api/auth-config'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiCredentialsRouteImport } from './routes/api/credentials'
 import { Route as ApiDisplayRouteImport } from './routes/api/display'
@@ -55,6 +56,11 @@ const ApiAlertsRoute = ApiAlertsRouteImport.update({
 const ApiAlertsSettingsRoute = ApiAlertsSettingsRouteImport.update({
   id: '/api/alerts-settings',
   path: '/api/alerts-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthConfigRoute = ApiAuthConfigRouteImport.update({
+  id: '/api/auth-config',
+  path: '/api/auth-config',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCostRoute = ApiCostRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
+  '/api/auth-config': typeof ApiAuthConfigRoute
   '/api/cost': typeof ApiCostRoute
   '/api/credentials': typeof ApiCredentialsRoute
   '/api/display': typeof ApiDisplayRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
+  '/api/auth-config': typeof ApiAuthConfigRoute
   '/api/cost': typeof ApiCostRoute
   '/api/credentials': typeof ApiCredentialsRoute
   '/api/display': typeof ApiDisplayRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/signin': typeof SigninRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
+  '/api/auth-config': typeof ApiAuthConfigRoute
   '/api/cost': typeof ApiCostRoute
   '/api/credentials': typeof ApiCredentialsRoute
   '/api/display': typeof ApiDisplayRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
+    | '/api/auth-config'
     | '/api/cost'
     | '/api/credentials'
     | '/api/display'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
+    | '/api/auth-config'
     | '/api/cost'
     | '/api/credentials'
     | '/api/display'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/alerts'
     | '/api/alerts-settings'
+    | '/api/auth-config'
     | '/api/cost'
     | '/api/credentials'
     | '/api/display'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   SigninRoute: typeof SigninRoute
   ApiAlertsRoute: typeof ApiAlertsRoute
   ApiAlertsSettingsRoute: typeof ApiAlertsSettingsRoute
+  ApiAuthConfigRoute: typeof ApiAuthConfigRoute
   ApiCostRoute: typeof ApiCostRoute
   ApiCredentialsRoute: typeof ApiCredentialsRoute
   ApiDisplayRoute: typeof ApiDisplayRoute
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/api/alerts-settings'
       fullPath: '/api/alerts-settings'
       preLoaderRoute: typeof ApiAlertsSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth-config': {
+      id: '/api/auth-config'
+      path: '/api/auth-config'
+      fullPath: '/api/auth-config'
+      preLoaderRoute: typeof ApiAuthConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cost': {
@@ -509,6 +529,7 @@ const rootRouteChildren: RootRouteChildren = {
   SigninRoute: SigninRoute,
   ApiAlertsRoute: ApiAlertsRoute,
   ApiAlertsSettingsRoute: ApiAlertsSettingsRoute,
+  ApiAuthConfigRoute: ApiAuthConfigRoute,
   ApiCostRoute: ApiCostRoute,
   ApiCredentialsRoute: ApiCredentialsRoute,
   ApiDisplayRoute: ApiDisplayRoute,

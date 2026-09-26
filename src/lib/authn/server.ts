@@ -21,6 +21,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins/organization";
 import { admin } from "better-auth/plugins/admin";
@@ -119,6 +120,21 @@ const dbRateLimitStorage = {
 };
 
 /* ------------------------------------------------------------------ */
+/* Google OAuth — social sign-in for pre-provisioned accounts only      */
+/* ------------------------------------------------------------------ */
+
+// Env-driven: when either is missing the provider is omitted entirely so
+// no dead "Sign in with Google" path is advertised. Secrets live in
+// /opt/pwrcell/dashboard.env (0600), never in the repo.
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+const googleProvider =
+  googleClientId && googleClientSecret
+    ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
+    : {};
+export const googleOAuthConfigured = Object.keys(googleProvider).length > 0;
+
+/* ------------------------------------------------------------------ */
 /* the instance                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -128,6 +144,40 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+  },
+  socialProviders: { ...googleProvider },
+  account: {
+    // A Google sign-in whose verified email matches an existing account
+    // links to that account instead of minting a new one. Google is a
+    // trusted provider (emails are verified by Google), so this cannot
+    // be used for account takeover.
+    accountLinking: { enabled: true, trustedProviders: ["google"] },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Closed-system gate (2026-09-25): Google sign-in must NEVER mint
+        // a new account. Provisioning goes through the admin CLI (raw SQL,
+        // bypasses this hook) or the platform-admin-gated admin API paths.
+        // Any user.create that ISN'T from an admin path is a social signup
+        // attempt — allow only pre-provisioned emails. Fail closed when
+        // there is no request context to inspect.
+        before: async (user, context) => {
+          const url = context?.request?.url ?? "";
+          const isAdminPath = url.includes("/api/auth/admin/");
+          if (!isAdminPath) {
+            const sql = await getSql();
+            const rows = await sql`select id from "user" where lower(email) = lower(${user.email}) limit 1`;
+            if (!rows.length) {
+              throw new APIError("FORBIDDEN", {
+                message:
+                  "No account exists for this email. Ask your administrator to create one first.",
+              });
+            }
+          }
+        },
+      },
+    },
   },
   user: {
     additionalFields: {
