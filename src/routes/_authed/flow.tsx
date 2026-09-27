@@ -100,6 +100,43 @@ function useTweened(target: number | null, ms = 600): number | null {
 }
 
 /**
+ * Fit a font size so that `text` fills the box width on one line, capped so
+ * the glyphs don't overrun the box's top region. Re-runs on resize and when
+ * the text changes. This is what makes the numbers readable across the room.
+ */
+function useFillFont(
+  boxRef: React.RefObject<HTMLElement | null>,
+  text: string
+): { size: number; textRef: React.RefObject<HTMLSpanElement | null> } {
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [size, setSize] = useState(72);
+  useEffect(() => {
+    const box = boxRef.current;
+    const el = textRef.current;
+    if (!box || !el) return;
+    const fit = () => {
+      const maxW = box.clientWidth * 0.94;
+      const maxH = box.clientHeight * 0.62;
+      let lo = 8;
+      let hi = Math.max(16, maxW * 1.5);
+      for (let i = 0; i < 14; i++) {
+        const mid = (lo + hi) / 2;
+        el.style.fontSize = `${mid}px`;
+        if (el.scrollWidth <= maxW && el.scrollHeight <= maxH) lo = mid;
+        else hi = mid;
+      }
+      setSize(Math.floor(lo));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxRef, text]);
+  return { size, textRef };
+}
+
+/**
  * A real chart as the background layer of each box: 2-hour power history,
  * correctly scaled — no axes, no grid, just the data behind the number.
  */
@@ -163,10 +200,15 @@ function FlowBox(props: {
 }) {
   const color = COLORS[props.metric];
   const dim = DIMS[props.metric];
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const { size, textRef } = useFillFont(innerRef, props.value);
   const open = () => props.onOpen(props.metric);
   return (
     <div
-      ref={props.boxRef}
+      ref={(el) => {
+        innerRef.current = el;
+        props.boxRef(el);
+      }}
       className="flow-box"
       role="button"
       tabIndex={0}
@@ -196,10 +238,12 @@ function FlowBox(props: {
           className="flow-value"
           style={{
             color,
+            fontSize: size,
+            whiteSpace: "nowrap",
             textShadow: `0 0 26px rgb(0 0 0 / 0.95), 0 2px 10px rgb(0 0 0 / 0.95)`,
           }}
         >
-          {props.value}
+          <span ref={textRef} style={{ display: "inline-block" }}>{props.value}</span>
         </div>
         <div className="flow-sub">{props.sub}</div>
       </div>
