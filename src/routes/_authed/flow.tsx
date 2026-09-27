@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import {
   Area,
   AreaChart,
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
+import { DisplaySettingsProvider } from "@/components/dashboard/display-settings-context";
+import { NavMenu } from "@/components/dashboard/nav-menu";
+import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
+
+/** Display settings for the slide-over menu (theme, rates toggle). */
+const loadFlowSettings = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireOrgServerFn } = await import("@/lib/authn/guard.server");
+  const { orgId } = await requireOrgServerFn();
+  const { loadDisplaySettings } = await import("@/lib/display-settings.server");
+  return loadDisplaySettings(orgId);
+});
 
 /**
  * /flow — full-screen 4-node energy flowchart for the wall kiosk.
@@ -283,7 +295,9 @@ function Wire(props: { from: Pt; to: Pt; watts: number | null; reverse?: boolean
 
 function FlowPage() {
   const { font } = Route.useSearch();
+  const settings = Route.useLoaderData();
   const fontFamily = font ? FONT_FAMILIES[font] : FONT_FAMILIES.anton;
+  const [credsOpen, setCredsOpen] = useState(false);
   const [point, setPoint] = useState<LivePoint>(null);
   const [error, setError] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
@@ -397,9 +411,15 @@ function FlowPage() {
     navigate({ to: "/graphs/$metric", params: { metric } });
 
   return (
+    <DisplaySettingsProvider initial={settings}>
     <div className="flow-root" ref={containerRef}>
       <style>{`
         .flow-root { position: fixed; inset: 0; background: #0b0d0c; overflow: hidden; }
+        .flow-menu { position: absolute; top: max(14px, 2.4vmin); left: max(14px, 2.4vmin); z-index: 3; }
+        .flow-menu > button { background: rgb(18 22 20 / 0.72); border: 1px solid rgb(232 237 233 / 0.16);
+          border-radius: 14px; padding: 12px; color: #e8ede9; backdrop-filter: blur(6px); cursor: pointer; }
+        .flow-menu > button:hover { background: rgb(32 38 35 / 0.88); color: #fff; }
+        .flow-menu > button svg { width: 30px; height: 30px; }
         .flow-wires { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
         .flow-wire { stroke-width: 10; stroke-linecap: round; stroke-dasharray: 26 30;
           animation: flowdash linear infinite; filter: drop-shadow(0 0 8px currentColor); }
@@ -498,16 +518,21 @@ function FlowPage() {
 
       {error && !point && <div className="flow-offline">OFFLINE</div>}
       {error && point && <div className="flow-offline">STALE</div>}
+      <div className="flow-menu">
+        <NavMenu onOpenLogin={() => setCredsOpen(true)} />
+      </div>
+      <CredentialsDialog open={credsOpen} onClose={() => setCredsOpen(false)} />
       {notConfigured && (
         <div className="flow-banner">
           <div style={{ fontSize: 28, fontWeight: 800 }}>No system connected</div>
           <div style={{ color: "#8b958e", maxWidth: 520 }}>
-            Enter the PWRview login on the main dashboard to start live telemetry.
+            Open the menu (top-left) and enter the PWRview login to start live telemetry.
           </div>
           <a href="/classic">Open dashboard</a>
         </div>
       )}
     </div>
+    </DisplaySettingsProvider>
   );
 }
 
@@ -515,5 +540,6 @@ export const Route = createFileRoute("/_authed/flow")({
   validateSearch: (search: Record<string, unknown>) => ({
     font: typeof search.font === "string" ? search.font : undefined,
   }),
+  loader: () => loadFlowSettings(),
   component: FlowPage,
 });
