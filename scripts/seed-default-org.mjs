@@ -3,13 +3,14 @@
  * Seed the default organization + platform admin (Phase 1).
  *
  * Idempotent: safe to re-run. Run manually at deploy AND locally:
- *   SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='...' node --experimental-strip-types scripts/seed-default-org.mjs
+ *   SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='4829' node --experimental-strip-types scripts/seed-default-org.mjs  # 4-digit PIN
  *
  * What it does:
  *  1. Creates (or updates) the platform admin user: role='admin',
  *     mustChangePassword=true (forced change on first sign-in), emailVerified=true.
- *     The password is hashed with better-auth's scrypt (better-auth/crypto) —
- *     never stored or logged in plaintext.
+ *     The credential is a 4-digit PIN (PIN scheme 2026-09-27), hashed with
+ *     better-auth's scrypt (better-auth/crypto) — never stored or logged in
+ *     plaintext.
  *  2. Creates organization id='org_default', name='Default Site',
  *     slug='default-site', timezone='America/Los_Angeles'.
  *  3. Adds the admin as member with role='owner'.
@@ -36,8 +37,9 @@ if (!email || !password) {
   );
   process.exit(1);
 }
-if (password.length < 12) {
-  console.error("[seed] SEED_ADMIN_PASSWORD must be at least 12 characters.");
+// PIN scheme (2026-09-27): the credential is a 4-digit PIN, not a password.
+if (!/^\d{4}$/.test(password) || /^(\d)\1{3}$/.test(password) || "0123456789".includes(password) || "9876543210".includes(password)) {
+  console.error("[seed] SEED_ADMIN_PASSWORD must be a 4-digit PIN (not trivial: no repeated digit or sequence).");
   process.exit(1);
 }
 
@@ -63,7 +65,7 @@ async function main() {
       await sql`insert into account (id, account_id, provider_id, user_id, password, created_at, updated_at)
         values (${randomUUID()}, ${userId}, 'credential', ${userId}, ${passwordHash}, now(), now())`;
     }
-    console.log(`[seed] admin user already existed — role/password refreshed for ${email}`);
+    console.log(`[seed] admin user already existed — role/PIN refreshed for ${email}`);
   } else {
     userId = randomUUID();
     const name = email.split("@")[0] || "Admin";

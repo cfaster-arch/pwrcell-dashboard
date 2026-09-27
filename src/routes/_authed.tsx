@@ -23,11 +23,12 @@ export const Route = createFileRoute("/_authed")({
   beforeLoad: async ({ location }) => {
     const session = await getSessionState();
     if (!session) throw redirect({ to: "/signin" });
-    // Temp-password gate (2026-09-25): applies to email AND Google sign-ins
-    // alike — the social flow is redirect-based so signin.tsx can't catch it.
-    // The password page itself is exempt so it can't redirect-loop.
-    if (session.mustChangePassword && location.pathname !== "/account/password") {
-      throw redirect({ to: "/account/password" });
+    // Temp-PIN gate (2026-09-27; was temp-password 2026-09-25): applies to email
+    // AND Google sign-ins alike — the social flow is redirect-based so
+    // signin.tsx can't catch it. The PIN page itself is exempt so it can't
+    // redirect-loop.
+    if (session.mustChangePassword && location.pathname !== "/account/pin") {
+      throw redirect({ to: "/account/pin" });
     }
     return { auth: session };
   },

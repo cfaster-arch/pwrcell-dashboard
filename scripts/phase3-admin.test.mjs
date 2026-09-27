@@ -23,7 +23,7 @@ const repoRoot = process.cwd();
 
 const pgDir = mkdtempSync(join(tmpdir(), "phase3-cli-db-"));
 const EMAIL = "phase3-admin@example.com";
-const PASSWORD = "test-password-1234";
+const PASSWORD = "4829"; // 4-digit PIN (PIN scheme 2026-09-27)
 
 function cliEnv(extra = {}) {
   const env = { ...process.env, ...extra };
@@ -48,14 +48,14 @@ async function cliFails(args, extraEnv = {}) {
 // CLI user management
 // ---------------------------------------------------------------------------
 
-test("cli: refuses to create without a password env var", async () => {
+test("cli: refuses to create without a PIN env var", async () => {
   await cliFails(["create", "--email", EMAIL], { ADMIN_USER_EMAIL: EMAIL });
 });
 
-test("cli: refuses a short password", async () => {
+test("cli: refuses a non-PIN credential", async () => {
   await cliFails(["create", "--email", EMAIL], {
     ADMIN_USER_EMAIL: EMAIL,
-    ADMIN_USER_PASSWORD: "short",
+    ADMIN_USER_PASSWORD: "nope-not-a-pin",
   });
 });
 
@@ -96,13 +96,13 @@ test("cli: disable bans and revokes sessions; enable unbans", async () => {
   assert.ok(line2 && !line2.includes("BANNED"), `expected no BANNED flag, got: ${line2}`);
 });
 
-test("cli: reset-password forces a password change", async () => {
+test("cli: reset-password forces a PIN change", async () => {
   const { stdout } = await cli(["reset-password", "--email", EMAIL], {
     ADMIN_USER_EMAIL: EMAIL,
-    ADMIN_USER_PASSWORD: "test-password-5678",
+    ADMIN_USER_PASSWORD: "7294",
   });
-  assert.match(stdout, /password reset for phase3-admin@example\.com/);
-  assert.match(stdout, /must change on next sign-in/);
+  assert.match(stdout, /PIN reset for phase3-admin@example\.com/);
+  assert.match(stdout, /must change PIN on next sign-in/);
   const listed = await cli(["list"]);
   const line = listed.stdout.split("\n").find((l) => l.includes(EMAIL));
   assert.ok(line && line.includes("must-change-password"), `got: ${line}`);

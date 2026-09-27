@@ -11,7 +11,7 @@
  *
  * Secrets come ONLY from the environment — never argv, never logged:
  *   ADMIN_USER_EMAIL     (or --email flag; env wins if both are set)
- *   ADMIN_USER_PASSWORD  (required for create and reset-password; min 12 chars)
+ *   ADMIN_USER_PASSWORD  (required for create and reset-password; 4-digit PIN, not trivial)
  *
  * Every mutating command appends to audit_log with actor_type='cli', using
  * the same hash-chain format as src/lib/authn/audit.server.ts (canonical
@@ -63,6 +63,13 @@ class CliError extends Error {}
  * PGlite postmaster.pid lock is released, then exits nonzero. */
 function fail(msg) {
   throw new CliError(msg);
+}
+
+// PIN scheme (2026-09-27): the credential is a 4-digit PIN, not a password.
+function checkPin(pin, envName) {
+  if (!/^\d{4}$/.test(pin)) fail(`${envName} must be exactly 4 digits`);
+  if (/^(\d)\1{3}$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin))
+    fail(`${envName} is trivially guessable (repeated digit or sequence)`);
 }
 
 /** Minimal --flag value parser: --flag value, --flag=value, boolean --flag. */
@@ -174,7 +181,7 @@ async function cmdCreate(sql, args) {
   const password = process.env.ADMIN_USER_PASSWORD ?? "";
   if (!email || !email.includes("@")) fail("email is required (--email or ADMIN_USER_EMAIL)");
   if (!password) fail("ADMIN_USER_PASSWORD must be set in the environment (never argv)");
-  if (password.length < 12) fail("ADMIN_USER_PASSWORD must be at least 12 characters");
+  checkPin(password, "ADMIN_USER_PASSWORD");
   const role = (args.role || "user").toLowerCase();
   if (role !== "admin" && role !== "user") fail("--role must be admin or user");
 
@@ -199,7 +206,7 @@ async function cmdCreate(sql, args) {
   }
 
   await auditCli(sql, ACTIONS.USER_CREATED, userId);
-  console.log(`[admin-user] created ${email} (role=${role}, must change password on first sign-in)`);
+  console.log(`[admin-user] created ${email} (role=${role}, must change PIN on first sign-in)`);
 }
 
 async function cmdDisable(sql, args) {
@@ -229,7 +236,7 @@ async function cmdResetPassword(sql, args) {
   const password = process.env.ADMIN_USER_PASSWORD ?? "";
   if (!email) fail("email is required (--email or ADMIN_USER_EMAIL)");
   if (!password) fail("ADMIN_USER_PASSWORD must be set in the environment (never argv)");
-  if (password.length < 12) fail("ADMIN_USER_PASSWORD must be at least 12 characters");
+  checkPin(password, "ADMIN_USER_PASSWORD");
   const user = await findUser(sql, email);
   if (!user) fail(`no such user: ${email}`);
   const acct = await sql`select id from account where user_id = ${user.id} and provider_id = 'credential'`;
@@ -238,7 +245,7 @@ async function cmdResetPassword(sql, args) {
   await sql`update "user" set must_change_password = true, updated_at = now() where id = ${user.id}`;
   const n = await revokeSessions(sql, user.id);
   await auditCli(sql, ACTIONS.AUTH_PASSWORD_RESET, user.id);
-  console.log(`[admin-user] password reset for ${email} (${n} session(s) revoked, must change on next sign-in)`);
+  console.log(`[admin-user] PIN reset for ${email} (${n} session(s) revoked, must change PIN on next sign-in)`);
 }
 
 async function cmdRevokeSessions(sql, args) {

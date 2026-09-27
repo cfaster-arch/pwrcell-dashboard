@@ -28,7 +28,7 @@ import { Route as ApiLiveRouteImport } from './routes/api/live'
 import { Route as ApiSeriesRouteImport } from './routes/api/series'
 import { Route as ApiTouRouteImport } from './routes/api/tou'
 import { Route as AuthedAccountIndexRouteImport } from './routes/_authed/account/index'
-import { Route as AuthedAccountPasswordRouteImport } from './routes/_authed/account/password'
+import { Route as AuthedAccountPinRouteImport } from './routes/_authed/account/pin'
 import { Route as AuthedGraphsMetricRouteImport } from './routes/_authed/graphs/$metric'
 import { Route as ApiAdminAuditRouteImport } from './routes/api/admin/audit'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -128,9 +128,9 @@ const AuthedAccountIndexRoute = AuthedAccountIndexRouteImport.update({
   path: '/account/',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedAccountPasswordRoute = AuthedAccountPasswordRouteImport.update({
-  id: '/account/password',
-  path: '/account/password',
+const AuthedAccountPinRoute = AuthedAccountPinRouteImport.update({
+  id: '/account/pin',
+  path: '/account/pin',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedGraphsMetricRoute = AuthedGraphsMetricRouteImport.update({
@@ -173,7 +173,7 @@ export interface FileRoutesByFullPath {
   '/api/live': typeof ApiLiveRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
-  '/account/password': typeof AuthedAccountPasswordRoute
+  '/account/pin': typeof AuthedAccountPinRoute
   '/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -198,7 +198,7 @@ export interface FileRoutesByTo {
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/': typeof AuthedIndexRoute
-  '/account/password': typeof AuthedAccountPasswordRoute
+  '/account/pin': typeof AuthedAccountPinRoute
   '/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -225,7 +225,7 @@ export interface FileRoutesById {
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/_authed/': typeof AuthedIndexRoute
-  '/_authed/account/password': typeof AuthedAccountPasswordRoute
+  '/_authed/account/pin': typeof AuthedAccountPinRoute
   '/_authed/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -252,7 +252,7 @@ export interface FileRouteTypes {
     | '/api/live'
     | '/api/series'
     | '/api/tou'
-    | '/account/password'
+    | '/account/pin'
     | '/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
@@ -277,7 +277,7 @@ export interface FileRouteTypes {
     | '/api/series'
     | '/api/tou'
     | '/'
-    | '/account/password'
+    | '/account/pin'
     | '/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
@@ -303,7 +303,7 @@ export interface FileRouteTypes {
     | '/api/series'
     | '/api/tou'
     | '/_authed/'
-    | '/_authed/account/password'
+    | '/_authed/account/pin'
     | '/_authed/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
@@ -467,11 +467,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAccountIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/account/password': {
-      id: '/_authed/account/password'
-      path: '/account/password'
-      fullPath: '/account/password'
-      preLoaderRoute: typeof AuthedAccountPasswordRouteImport
+    '/_authed/account/pin': {
+      id: '/_authed/account/pin'
+      path: '/account/pin'
+      fullPath: '/account/pin'
+      preLoaderRoute: typeof AuthedAccountPinRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/graphs/$metric': {
@@ -509,7 +509,7 @@ interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedFlowRoute: typeof AuthedFlowRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
-  AuthedAccountPasswordRoute: typeof AuthedAccountPasswordRoute
+  AuthedAccountPinRoute: typeof AuthedAccountPinRoute
   AuthedGraphsMetricRoute: typeof AuthedGraphsMetricRoute
   AuthedAccountIndexRoute: typeof AuthedAccountIndexRoute
 }
@@ -518,7 +518,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedFlowRoute: AuthedFlowRoute,
   AuthedIndexRoute: AuthedIndexRoute,
-  AuthedAccountPasswordRoute: AuthedAccountPasswordRoute,
+  AuthedAccountPinRoute: AuthedAccountPinRoute,
   AuthedGraphsMetricRoute: AuthedGraphsMetricRoute,
   AuthedAccountIndexRoute: AuthedAccountIndexRoute,
 }

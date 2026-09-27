@@ -22,6 +22,8 @@
 import { randomBytes } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+import { PIN_LENGTH, PIN_RULE_TEXT, isValidPin } from "./pin";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins/organization";
 import { admin } from "better-auth/plugins/admin";
@@ -144,6 +146,22 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    // PIN scheme (2026-09-27): the credential is a 4-digit PIN, not a text
+    // password. Length is pinned here; the digit/triviality rules live in
+    // password.hash below so every write path (sign-up, change, admin reset)
+    // enforces them server-side. Storage is unchanged (scrypt hash).
+    minPasswordLength: PIN_LENGTH,
+    maxPasswordLength: PIN_LENGTH,
+    password: {
+      hash: async (pin: string) => {
+        if (!isValidPin(pin)) {
+          throw new APIError("BAD_REQUEST", { message: PIN_RULE_TEXT });
+        }
+        return hashPassword(pin);
+      },
+      verify: async ({ hash, password }: { hash: string; password: string }) =>
+        verifyPassword({ hash, password }),
+    },
   },
   socialProviders: { ...googleProvider },
   account: {

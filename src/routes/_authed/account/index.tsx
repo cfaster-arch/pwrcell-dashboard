@@ -50,10 +50,10 @@ function AccountPage() {
         </dl>
         <div className="mt-6 flex flex-col gap-2">
           <Link
-            to="/account/password"
+            to="/account/pin"
             className="rounded-lg border border-border px-4 py-2.5 text-center text-[15px] font-medium text-fg hover:bg-surface-2"
           >
-            Change password
+            Change PIN
           </Link>
           <button
             type="button"

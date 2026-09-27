@@ -11,11 +11,11 @@
  * user.create gate never fires because the user already exists).
  *
  * Usage (on the VPS, with the app STOPPED — PGlite dataDir is single-writer):
- *   cd /opt/pwrcell && node provision-user.mjs "you@example.com" ["Org Name"] [password] [user_role] [member_role]
+ *   cd /opt/pwrcell && node provision-user.mjs "you@example.com" ["Org Name"] [pin] [user_role] [member_role]
  *
- * With a password: enables email+password login and forces a password change
- * on first sign-in. Without: Google-only (verified email must match).
- * Roles default to platform "user" + org "member".
+ * With a PIN (exactly 4 digits, not trivial): enables email+PIN login and
+ * forces a PIN change on first sign-in. Without: Google-only (verified email
+ * must match). Roles default to platform "user" + org "member".
  *
  * Env:
  *   PGLITE_DIR  — defaults to /opt/pwrcell/data/pglite
@@ -28,11 +28,20 @@ import { randomUUID } from "node:crypto";
 
 const email = (process.argv[2] || process.env.PROVISION_EMAIL || "").trim().toLowerCase();
 const orgName = (process.argv[3] || process.env.PROVISION_ORG || "Strider Built").trim();
-const password = (process.argv[4] || process.env.PROVISION_PASSWORD || "").trim(); // optional: enables email+password login
+const pin = (process.argv[4] || process.env.PROVISION_PASSWORD || "").trim(); // optional: enables email+PIN login
 const userRole = (process.argv[5] || process.env.PROVISION_USER_ROLE || "user").trim(); // platform role: user|admin
 const memberRole = (process.argv[6] || process.env.PROVISION_MEMBER_ROLE || "member").trim(); // org role: member|admin|owner
 if (!email || !email.includes("@")) {
   console.error("provision-user: need an email address (argv[1] or PROVISION_EMAIL)");
+  process.exit(2);
+}
+// PIN scheme (2026-09-27): the credential is a 4-digit PIN, not a password.
+if (pin && !/^\d{4}$/.test(pin)) {
+  console.error("provision-user: PIN must be exactly 4 digits");
+  process.exit(2);
+}
+if (pin && (/^(\d)\1{3}$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin))) {
+  console.error("provision-user: PIN is trivially guessable (repeated digit or sequence)");
   process.exit(2);
 }
 const orgSlug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "org";
@@ -73,7 +82,7 @@ try {
     await pg.query(
       `insert into "user" (id, name, email, email_verified, created_at, updated_at, role, must_change_password)
        values ($1, $2, $3, true, now(), now(), $4, $5)`,
-      [id, name, email, userRole, Boolean(password)]
+      [id, name, email, userRole, Boolean(pin)]
     );
     user = { id, email, role: userRole };
     console.log(`provision-user: created user ${email} (platform role: ${userRole})`);
@@ -86,28 +95,28 @@ try {
     }
     await pg.query(
       `update "user" set email_verified = true, must_change_password = $2, updated_at = now() where id = $1`,
-      [user.id, Boolean(password)]
+      [user.id, Boolean(pin)]
     );
   }
 
-  // 2b. Credential account (email+password login). must_change_password forces
-  // the user to pick their own password on first sign-in.
-  if (password) {
+  // 2b. Credential account (email+PIN login). must_change_password forces
+  // the user to pick their own PIN on first sign-in.
+  if (pin) {
     const { hashPassword } = await import("better-auth/crypto");
-    const hash = await hashPassword(password);
+    const hash = await hashPassword(pin);
     const existing = (await pg.query(
       `select id from account where provider_id = 'credential' and user_id = $1 limit 1`, [user.id]
     )).rows[0];
     if (existing) {
       await pg.query(`update account set password = $2, updated_at = now() where id = $1`, [existing.id, hash]);
-      console.log(`provision-user: reset password for ${email} (change required on next login)`);
+      console.log(`provision-user: reset PIN for ${email} (change required on next login)`);
     } else {
       await pg.query(
         `insert into account (id, account_id, provider_id, user_id, password, created_at, updated_at)
          values ($1, $2, 'credential', $3, $4, now(), now())`,
         [randomUUID(), user.id, user.id, hash]
       );
-      console.log(`provision-user: enabled email+password login for ${email} (change required on first login)`);
+      console.log(`provision-user: enabled email+PIN login for ${email} (change required on first login)`);
     }
   }
 

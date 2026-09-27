@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { authClient } from "@/lib/authn/client";
+import { PIN_LENGTH, isValidPin } from "@/lib/authn/pin";
 
 /** Already signed in? Skip the form entirely. */
 const getSessionState = createServerFn({ method: "GET" }).handler(async () => {
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/signin")({
 function SignInPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
@@ -32,7 +33,7 @@ function SignInPage() {
     // same generic message (no account oracle).
     const params = new URLSearchParams(window.location.search);
     if (params.get("error")) {
-      setError("Sign-in failed. Check your email and password and try again.");
+      setError("Sign-in failed. Check your email and PIN and try again.");
       window.history.replaceState(null, "", window.location.pathname);
     }
     fetch("/api/auth-config", { cache: "no-store" })
@@ -59,20 +60,25 @@ function SignInPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const digits = pin.replace(/\D/g, "").slice(0, PIN_LENGTH);
+    if (!isValidPin(digits)) {
+      setError(`Enter your ${PIN_LENGTH}-digit PIN.`);
+      return;
+    }
     setBusy(true);
     try {
       const { data, error: signInError } = await authClient.signIn.email({
         email: email.trim(),
-        password,
+        password: digits,
       });
       if (signInError) {
-        // Identical message for bad-email vs bad-password (no account oracle).
-        setError("Sign-in failed. Check your email and password and try again.");
+        // Identical message for bad-email vs bad-PIN (no account oracle).
+        setError("Sign-in failed. Check your email and PIN and try again.");
         return;
       }
       const mustChange = (data?.user as { mustChangePassword?: boolean } | undefined)
         ?.mustChangePassword;
-      navigate({ to: mustChange ? "/account/password" : "/" });
+      navigate({ to: mustChange ? "/account/pin" : "/" });
     } finally {
       setBusy(false);
     }
@@ -101,15 +107,18 @@ function SignInPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-muted">Password</span>
+            <span className="text-sm font-medium text-muted">PIN</span>
             <input
               type="password"
               required
               autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={PIN_LENGTH}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
               className="rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-[15px] text-fg outline-none placeholder:text-subtle focus:border-border-strong"
-              placeholder="••••••••"
+              placeholder="••••"
             />
           </label>
           {error ? (
