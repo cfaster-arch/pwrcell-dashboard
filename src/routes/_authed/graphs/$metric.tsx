@@ -2,23 +2,15 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import type { LivePayload, SeriesPayload } from "@/lib/pwrcell/types";
-import type { DisplaySettings } from "@/lib/display-settings";
-import { backgroundStyle } from "@/lib/display-settings";
 import {
   METRIC_RANGES,
-  MetricDetail,
   METRIC_CFG,
   type ChartPoint,
   type MetricKey,
   type MetricRangeMinutes,
 } from "@/components/dashboard/metric-detail";
+import { MetricDetail } from "@/components/dashboard/metric-detail";
 import type { DayAggregate, HistoryPoint } from "@/routes/api/history";
-import { NavMenu } from "@/components/dashboard/nav-menu";
-import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
-import {
-  DisplaySettingsProvider,
-  useDisplaySettings,
-} from "@/components/dashboard/display-settings-context";
 
 const VALID = new Set(Object.keys(METRIC_CFG));
 
@@ -29,13 +21,11 @@ const loadMetric = createServerFn({ method: "GET" })
     const { requireOrgServerFn } = await import("@/lib/authn/guard.server");
     const { orgId } = await requireOrgServerFn();
     const { getLivePayload, getSeriesPayload } = await import("@/lib/pwrcell/poller.server");
-    const { loadDisplaySettings } = await import("@/lib/display-settings.server");
-    const [live, series, settings] = await Promise.all([
+    const [live, series] = await Promise.all([
       getLivePayload(orgId),
       getSeriesPayload(orgId, 720),
-      loadDisplaySettings(orgId),
     ]);
-    return { live, series, settings };
+    return { live, series };
   });
 
 export const Route = createFileRoute("/_authed/graphs/$metric")({
@@ -55,13 +45,8 @@ function MetricPage() {
   const initial = Route.useLoaderData() as {
     live: LivePayload;
     series: SeriesPayload;
-    settings: DisplaySettings;
   };
-  return (
-    <DisplaySettingsProvider initial={initial.settings}>
-      <MetricView metricKey={key} initialLive={initial.live} initialSeries={initial.series} />
-    </DisplaySettingsProvider>
-  );
+  return <MetricView metricKey={key} initialLive={initial.live} initialSeries={initial.series} />;
 }
 
 function MetricView({
@@ -73,13 +58,15 @@ function MetricView({
   initialLive: LivePayload;
   initialSeries: SeriesPayload;
 }) {
-  const { settings } = useDisplaySettings();
-  const [credsOpen, setCredsOpen] = useState(false);
   const [live, setLive] = useState<LivePayload>(initialLive);
   const [points, setPoints] = useState<ChartPoint[]>(initialSeries.points);
   const [days, setDays] = useState<DayAggregate[] | undefined>(undefined);
   const [bucketSeconds, setBucketSeconds] = useState(30);
   const [minutes, setMinutes] = useState<MetricRangeMinutes>(720);
+
+  useEffect(() => {
+    document.title = `${METRIC_CFG[metricKey].label} charts`;
+  }, [metricKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,36 +111,42 @@ function MetricView({
   const cfg = METRIC_CFG[metricKey];
 
   return (
-    <div className="min-h-dvh bg-bg text-fg" style={backgroundStyle(settings)}>
-      <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 2xl:max-w-[104rem] 2xl:px-10">
-        <header className="flex items-center gap-3">
-          <NavMenu onOpenLogin={() => setCredsOpen(true)} />
-          <Link
-            to="/flow"
-            aria-label="Back to energy flow"
-            className="rounded-lg p-2.5 text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <span aria-hidden="true" className="block text-xl leading-none">←</span>
-          </Link>
-          <div>
-            <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
-            <h1 className="mt-1 text-h1 font-medium tracking-tight text-fg">
-              {cfg.label}
-            </h1>
-          </div>
-        </header>
-        <p className="-mt-2 max-w-3xl text-sm leading-relaxed text-muted">{cfg.blurb}</p>
-        <MetricDetail
-          metric={metricKey}
-          points={points}
-          days={days}
-          bucketSeconds={bucketSeconds}
-          timeZone={live.point?.timezone}
-          minutes={minutes}
-          onMinutes={setMinutes}
-        />
-        <CredentialsDialog open={credsOpen} onClose={() => setCredsOpen(false)} />
+    <div className="metric-root">
+      <style>{`
+        .metric-root { min-height: 100dvh; background: #0b0d0c; color: #e8ede9;
+          padding: clamp(12px, 2.5vmin, 28px); box-sizing: border-box; }
+        .metric-head { display: flex; align-items: center; gap: clamp(12px, 2vmin, 24px);
+          margin-bottom: clamp(10px, 2vmin, 20px); flex-wrap: wrap; }
+        .metric-back { display: inline-flex; align-items: center; gap: 10px;
+          min-height: 60px; padding: 12px 30px; border-radius: 999px;
+          background: #1c211e; border: 2px solid rgb(232 237 233 / 0.25);
+          color: #e8ede9; font-size: 22px; font-weight: 800; letter-spacing: 0.04em;
+          text-decoration: none; }
+        .metric-back:active { transform: scale(0.97); }
+        .metric-back:focus-visible { outline: 3px solid #e8ede9; outline-offset: 3px; }
+        .metric-title { font-size: clamp(28px, 4.5vmin, 54px); font-weight: 900;
+          letter-spacing: 0.06em; margin: 0; }
+        .metric-blurb { color: #8b958e; font-size: clamp(13px, 2vmin, 18px);
+          margin: 0 0 clamp(10px, 2vmin, 20px); max-width: 70ch; }
+      `}</style>
+      <div className="metric-head">
+        <Link to="/flow" className="metric-back" aria-label="Back to energy flow">
+          <span aria-hidden="true">←</span> Back
+        </Link>
+        <h1 className="metric-title" style={{ color: cfg.color }}>
+          {cfg.label.toUpperCase()}
+        </h1>
       </div>
+      <p className="metric-blurb">{cfg.blurb}</p>
+      <MetricDetail
+        metric={metricKey}
+        points={points}
+        days={days}
+        bucketSeconds={bucketSeconds}
+        timeZone={live.point?.timezone}
+        minutes={minutes}
+        onMinutes={setMinutes}
+      />
     </div>
   );
 }
