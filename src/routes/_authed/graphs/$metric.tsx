@@ -130,7 +130,7 @@ function MetricView({
           margin: 0 0 clamp(10px, 2vmin, 20px); max-width: 70ch; }
       `}</style>
       <div className="metric-head">
-        <Link to="/flow" className="metric-back" aria-label="Back to energy flow">
+        <Link to="/flow" search={{ font: undefined }} className="metric-back" aria-label="Back to energy flow">
           <span aria-hidden="true">←</span> Back
         </Link>
         <h1 className="metric-title" style={{ color: cfg.color }}>

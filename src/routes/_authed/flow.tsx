@@ -100,9 +100,10 @@ function useTweened(target: number | null, ms = 600): number | null {
 }
 
 /**
- * Fit a font size so that `text` fills the box width on one line, capped so
- * the glyphs don't overrun the box's top region. Re-runs on resize and when
- * the text changes. This is what makes the numbers readable across the room.
+ * Fit a font size so that `text` nearly fills the box on one line — this is
+ * the wall-display sizing: as large as the box allows, label and caption
+ * overlaid as small chrome top and bottom. Re-runs on resize and when the
+ * text changes.
  */
 function useFillFont(
   boxRef: React.RefObject<HTMLElement | null>,
@@ -115,8 +116,8 @@ function useFillFont(
     const el = textRef.current;
     if (!box || !el) return;
     const fit = () => {
-      const maxW = box.clientWidth * 0.94;
-      const maxH = box.clientHeight * 0.62;
+      const maxW = box.clientWidth * 0.96;
+      const maxH = box.clientHeight * 0.8;
       let lo = 8;
       let hi = Math.max(16, maxW * 1.5);
       for (let i = 0; i < 14; i++) {
@@ -135,6 +136,13 @@ function useFillFont(
   }, [boxRef, text]);
   return { size, textRef };
 }
+
+/** Preview fonts selectable via ?font=bebas|anton|oswald (no param = system). */
+const FONT_FAMILIES: Record<string, string> = {
+  bebas: '"Bebas Neue", sans-serif',
+  anton: '"Anton", sans-serif',
+  oswald: '"Oswald", sans-serif',
+};
 
 /**
  * A real chart as the background layer of each box: 2-hour power history,
@@ -197,6 +205,7 @@ function FlowBox(props: {
   points: SeriesPoint[];
   onOpen: (metric: Metric) => void;
   boxRef: (el: HTMLDivElement | null) => void;
+  fontFamily?: string;
 }) {
   const color = COLORS[props.metric];
   const dim = DIMS[props.metric];
@@ -239,6 +248,7 @@ function FlowBox(props: {
           style={{
             color,
             fontSize: size,
+            fontFamily: props.fontFamily,
             whiteSpace: "nowrap",
             textShadow: `0 0 26px rgb(0 0 0 / 0.95), 0 2px 10px rgb(0 0 0 / 0.95)`,
           }}
@@ -272,6 +282,8 @@ function Wire(props: { from: Pt; to: Pt; watts: number | null; reverse?: boolean
 }
 
 function FlowPage() {
+  const { font } = Route.useSearch();
+  const fontFamily = font ? FONT_FAMILIES[font] : undefined;
   const [point, setPoint] = useState<LivePoint>(null);
   const [error, setError] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
@@ -402,16 +414,17 @@ function FlowPage() {
           cursor: pointer; }
         .flow-box:focus-visible { outline: 3px solid #e8ede9; outline-offset: -6px; }
         .flow-box:active { transform: scale(0.995); }
-        .flow-chart-bg { position: absolute; left: 2%; right: 2%; top: 34%; bottom: 3%;
+        .flow-chart-bg { position: absolute; left: 2%; right: 2%; top: 6%; bottom: 6%;
           z-index: 0; pointer-events: none; opacity: 0.85; }
-        .flow-head { position: absolute; z-index: 1; top: 0; left: 0; right: 0;
-          display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-        .flow-label { margin-top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
+        .flow-head { position: absolute; z-index: 1; inset: 0;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          pointer-events: none; }
+        .flow-label { position: absolute; top: 3%; font-size: clamp(12px, 2vmin, 26px);
           font-weight: 800; letter-spacing: 0.35em; text-indent: 0.35em; opacity: 0.95; }
-        .flow-value { font-size: clamp(44px, 10vmin, 120px); font-weight: 900; line-height: 1.15;
+        .flow-value { font-weight: 900; line-height: 1;
           white-space: nowrap; font-variant-numeric: tabular-nums;
           font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
-        .flow-sub { font-size: clamp(13px, 2.4vmin, 28px);
+        .flow-sub { position: absolute; bottom: 3.5%; font-size: clamp(11px, 1.9vmin, 24px);
           font-weight: 600; letter-spacing: 0.12em; color: #8b958e; text-transform: uppercase; }
         .flow-banner { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 18px; background: rgb(11 13 12 / 0.92);
@@ -446,6 +459,7 @@ function FlowPage() {
           points={series}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[0] = el; }}
+          fontFamily={fontFamily}
         />
         <FlowBox
           label="HOME"
@@ -456,6 +470,7 @@ function FlowPage() {
           points={series}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[1] = el; }}
+          fontFamily={fontFamily}
         />
         <FlowBox
           label="BATTERY"
@@ -466,6 +481,7 @@ function FlowPage() {
           points={series}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[2] = el; }}
+          fontFamily={fontFamily}
         />
         <FlowBox
           label="GRID"
@@ -476,6 +492,7 @@ function FlowPage() {
           points={series}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[3] = el; }}
+          fontFamily={fontFamily}
         />
       </div>
 
@@ -495,5 +512,8 @@ function FlowPage() {
 }
 
 export const Route = createFileRoute("/_authed/flow")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    font: typeof search.font === "string" ? search.font : undefined,
+  }),
   component: FlowPage,
 });
