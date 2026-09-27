@@ -47,7 +47,8 @@ import { isMainModule, mergeAppEnv, projectRoot, readAppEnv } from "./with-app-e
 
 const DEFAULT_DEV_URL = "http://127.0.0.1:8080";
 
-/** The predicate `src/lib/auth/{client,server}.ts` apply to the flag. */
+/** The predicate the (now-removed) legacy Grok auth client/server applied to the
+ * flag — kept for the dev/build agreement check. */
 export function authEnabledFromEnvValue(value) {
   return value !== "false";
 }
