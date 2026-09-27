@@ -393,12 +393,6 @@ export function SettingsPanel() {
             checked={settings.showRates}
             onChange={(showRates) => void update({ showRates })}
           />
-          <Switch
-            label="Cameras"
-            hint="Ring camera feeds on the dashboard, plus camera setup below"
-            checked={settings.showCameras}
-            onChange={(showCameras) => void update({ showCameras })}
-          />
         </div>
       </div>
     </section>

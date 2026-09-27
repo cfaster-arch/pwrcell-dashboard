@@ -325,7 +325,7 @@ for (const metric of ["solar", "home", "battery", "grid"]) {
   }
 }
 
-// ---------- 9. alerts / rate plan / cameras sections in menu ----------
+// ---------- 9. alerts / rate plan sections in menu ----------
 await page.goto(`${BASE}/`);
 await settle(1000);
 await openMenu();
@@ -355,8 +355,6 @@ await openMenu();
       check("Rate plan save persists", st2 && st2.settings, JSON.stringify(st2?.settings)?.slice(0, 80));
     }
   }
-  const ringPresent = (await m.getByText(/ring/i).count()) > 0;
-  check("Ring/cameras section present", ringPresent);
 }
 await shot("50-menu-open-desktop.png");
 await closeMenu();

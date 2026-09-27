@@ -152,7 +152,7 @@ function generateDekFile(path: string): DekFileDoc {
   console.warn(
     "[authn:crypto] *** NEW DATA-ENCRYPTION KEY GENERATED ***\n" +
       `[authn:crypto]   path: ${path}\n` +
-      "[authn:crypto]   This key encrypts third-party credentials (PWRview logins, Ring tokens).\n" +
+      "[authn:crypto]   This key encrypts third-party credentials (PWRview logins).\n" +
       "[authn:crypto]   BACK IT UP NOW, separately from database backups, encrypted with the\n" +
       "[authn:crypto]   backup passphrase. Keep the file at mode 0600, owned by the service\n" +
       "[authn:crypto]   user, outside the repo. If this key is lost, encrypted credentials\n" +

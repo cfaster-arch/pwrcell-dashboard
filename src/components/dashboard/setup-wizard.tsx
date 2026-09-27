@@ -31,7 +31,7 @@ export function SetupWizard({
       <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl">
         <p className="text-kicker tracking-[0.22em] text-muted uppercase">First-time setup</p>
         <h2 className="mt-1 text-xl font-medium tracking-tight">
-          {["Connect PWRview", "Rate plan", "Cameras", "Display mode"][step]}
+          {["Connect PWRview", "Rate plan", "Display mode"][step]}
         </h2>
 
         {step === 0 && (
@@ -69,17 +69,6 @@ export function SetupWizard({
         )}
 
         {step === 2 && (
-          <div className="mt-4 space-y-3">
-            <p className="text-sm leading-relaxed text-muted">
-              Ring cameras are optional. When you're ready, open the menu
-              (top left) → <span className="font-medium text-fg">Cameras</span>,
-              sign in to Ring, and pick which cameras show on the dashboard.
-              You can skip this entirely for now.
-            </p>
-          </div>
-        )}
-
-        {step === 3 && (
           <div className="mt-4 grid grid-cols-2 gap-2">
             {MODES.map((m) => (
               <button
@@ -110,8 +99,8 @@ export function SetupWizard({
           >
             <ArrowLeft className="size-4" /> Back
           </button>
-          <p className="text-xs text-subtle">{step + 1} of 4</p>
-          {step < 3 ? (
+          <p className="text-xs text-subtle">{step + 1} of 3</p>
+          {step < 2 ? (
             <button
               onClick={() => setStep((s) => s + 1)}
               className="flex items-center gap-1 rounded-lg bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface"

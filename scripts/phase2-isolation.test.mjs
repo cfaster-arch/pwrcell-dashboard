@@ -1,7 +1,7 @@
 /**
  * Phase 2 two-org isolation tests.
  *
- * All fixtures — no real Generac/Ring credentials, no network.
+ * All fixtures — no real Generac credentials, no network.
  *
  * Uses the same hermetic pattern as scripts/crypto-audit.test.mjs: "@/lib/db"
  * is aliased to an in-memory PGlite behind the repo's Sql interface, the real
@@ -10,12 +10,11 @@
  *
  * Coverage:
  *  - AES-256-GCM ciphertexts are bound to the org id (AAD): org B cannot
- *    decrypt org A's stored PWRview password or Ring refresh token.
- *  - Per-org isolation for PWRview credentials, Ring tokens, display / alert /
+ *    decrypt org A's stored PWRview password.
+ *  - Per-org isolation for PWRview credentials, display / alert /
  *    TOU settings, energy history, and alerts.
  *  - Cross-org writes are denied at the data layer (acknowledgeAlert,
- *    credential/token reads).
- *  - Ring stream names are namespaced and disjoint per org.
+ *    credential reads).
  *  - deleteOrg removes the org and every owned row (cascade), leaves the
  *    other org intact, and keeps the append-only audit trail.
  */
@@ -110,14 +109,12 @@ process.env.DEK_FILE = join(dekDir, "dek.key");
 
 // Real modules under test (Node strips types on import).
 const creds = await import("../src/lib/pwrcell/org-credentials.server.ts");
-const ringTokens = await import("../src/lib/ring/org-ring-tokens.server.ts");
 const crypto = await import("../src/lib/authn/crypto.server.ts");
 const orgSettings = await import("../src/lib/org-settings.server.ts");
 const display = await import("../src/lib/display-settings.server.ts");
 const tou = await import("../src/lib/tou-settings.server.ts");
 const alerts = await import("../src/lib/alerts.server.ts");
 const orgs = await import("../src/lib/orgs.server.ts");
-const ringApi = await import("../src/lib/ring/ring-api.server.ts");
 const shim = await import(pathToFileURL(shimPath).href);
 const sql = await shim.getSql();
 
@@ -171,13 +168,13 @@ test("crypto: org A's ciphertext does not decrypt under org B", () => {
   );
 });
 
-test("crypto: purpose is bound — a password blob is not a Ring token", () => {
+test("crypto: purpose is bound — a password blob is not another secret", () => {
   // Same org, different secret purpose: the AAD differs, so a ciphertext
-  // swapped between the two columns (confused write or DB-level swap) fails
+  // swapped between two purposes (confused write or DB-level swap) fails
   // authentication instead of decrypting as the wrong secret (R2.3).
   const enc = crypto.encryptString("fixture-secret", crypto.orgAad(ORG_A, "pwrcell.password"));
   assert.throws(
-    () => crypto.decryptString(enc.payload, enc.keyId, crypto.orgAad(ORG_A, "ring.refresh")),
+    () => crypto.decryptString(enc.payload, enc.keyId, crypto.orgAad(ORG_A, "other.purpose")),
     /authentication error/,
     "same-org ciphertext for another purpose must not decrypt",
   );
@@ -219,27 +216,6 @@ test("credentials: per-org isolation, no cross-org reads", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Ring token isolation
-// ---------------------------------------------------------------------------
-
-test("ring tokens: per-org isolation", async () => {
-  await ringTokens.setOrgRingToken(ORG_A, "ring-refresh-alpha");
-  assert.equal(await ringTokens.getOrgRingToken(ORG_A), "ring-refresh-alpha");
-  assert.equal(await ringTokens.getOrgRingToken(ORG_B), null);
-  assert.equal(await ringTokens.orgRingConfigured(ORG_B), false);
-  assert.equal(await ringTokens.orgRingConfigured(ORG_A), true);
-
-  await ringTokens.setOrgRingToken(ORG_B, "ring-refresh-beta");
-  assert.equal(await ringTokens.getOrgRingToken(ORG_B), "ring-refresh-beta");
-  assert.equal(await ringTokens.getOrgRingToken(ORG_A), "ring-refresh-alpha");
-
-  await ringTokens.clearOrgRingToken(ORG_A);
-  assert.equal(await ringTokens.getOrgRingToken(ORG_A), null);
-  assert.equal(await ringTokens.getOrgRingToken(ORG_B), "ring-refresh-beta");
-  await ringTokens.clearOrgRingToken(ORG_B);
-});
-
-// ---------------------------------------------------------------------------
 // Settings isolation (display / alerts / TOU)
 // ---------------------------------------------------------------------------
 
@@ -265,33 +241,6 @@ test("settings: display/alerts/tou are per-org", async () => {
   assert.equal(sa.lowSocThreshold, 5);
   const sb = await alerts.loadAlertSettings(ORG_B);
   assert.equal(sb.enabled, true, "org B keeps its own alert settings");
-});
-
-// ---------------------------------------------------------------------------
-// Ring stream namespacing
-// ---------------------------------------------------------------------------
-
-test("ring: stream names are namespaced and disjoint per org", () => {
-  const a = ringApi.orgStreamNames(ORG_A);
-  const b = ringApi.orgStreamNames(ORG_B);
-  assert.deepEqual(a.length, 2);
-  assert.deepEqual(b.length, 2);
-  for (const name of a) {
-    assert.ok(!b.includes(name), `stream ${name} must not belong to both orgs`);
-    // Namespace is org_<16 hex of sha256(orgId)>__ — opaque, collision-free.
-    assert.match(name, /^org_[0-9a-f]{16}__cam[12]$/, "stream name carries the hashed org namespace");
-  }
-  for (const name of b) {
-    assert.match(name, /^org_[0-9a-f]{16}__cam[12]$/);
-  }
-  // A hostile org id cannot break out of the namespace or collide with a real org.
-  const evil = ringApi.orgStreamNames("../../etc");
-  for (const name of evil) {
-    assert.match(name, /^org_[0-9a-f]{16}__cam[12]$/, "stream names are strict");
-    assert.ok(!a.includes(name) && !b.includes(name), "hostile id must not collide with real orgs");
-  }
-  // Deterministic: same org id always maps to the same namespace.
-  assert.deepEqual(ringApi.orgStreamNames(ORG_A), a, "namespace mapping is stable");
 });
 
 // ---------------------------------------------------------------------------

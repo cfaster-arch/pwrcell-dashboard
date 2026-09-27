@@ -2,7 +2,7 @@
  * Organization management (Phase 2).
  *
  * createOrg: creates the org, its org_settings row, and an owner membership.
- * deleteOrg: FULL cascade — stops the org's poller, re-syncs the Ring bridge,
+ * deleteOrg: FULL cascade — stops the org's poller,
  *   removes members/invitations (explicit; no DB cascade on those tables),
  *   then deletes the org row. org_settings, org_credentials, org_ring_tokens,
  *   energy_samples, alerts, kiosk_devices, and pairing_codes cascade via FK.
@@ -10,7 +10,6 @@
  */
 import { getSql } from "@/lib/db";
 import { stopOrgPoller } from "@/lib/pwrcell/poller.server";
-import { syncBridge } from "@/lib/ring/ring-api.server";
 import { deleteOrgBackgroundFiles } from "@/lib/display-settings.server";
 import { auditEvent, AUDIT_ACTIONS } from "@/lib/authn/audit.server";
 
@@ -161,13 +160,6 @@ export async function deleteOrg(orgId: string, actorUserId?: string): Promise<{ 
       tx,
     );
   });
-
-  // 6. Re-sync the shared Ring bridge so the deleted org's streams drop.
-  try {
-    await syncBridge();
-  } catch (err) {
-    console.warn(`[orgs] bridge re-sync after deleting ${orgId} failed:`, err);
-  }
 
   return { deleted: name };
 }

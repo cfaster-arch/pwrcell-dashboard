@@ -68,7 +68,6 @@ function sanitize(raw: unknown, orgId?: string): DisplaySettings {
     nightDim: r.nightDim !== false,
     setupComplete: r.setupComplete === true,
     showRates: r.showRates !== false,
-    showCameras: r.showCameras !== false,
   };
   // NOTE: "image" mode is intentionally sticky even with no image uploaded yet —
   // the settings UI shows the upload control exactly in that state, and

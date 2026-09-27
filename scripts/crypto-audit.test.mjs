@@ -227,8 +227,6 @@ test("audit: AUDIT_ACTIONS covers the required set", () => {
     ORG_DELETED: "org.deleted",
     CREDENTIALS_SET: "credentials.set",
     CREDENTIALS_CLEARED: "credentials.cleared",
-    RING_CONNECTED: "ring.connected",
-    RING_DISCONNECTED: "ring.disconnected",
     KIOSK_PAIRED: "kiosk.paired",
     KIOSK_REVOKED: "kiosk.revoked",
     KIOSK_PAIR_CODE_CREATED: "kiosk.pair_code_created",

@@ -14,7 +14,6 @@ import { describeRatePeriod, isNightHour } from "@/lib/tou-period";
 import { backgroundStyle } from "@/lib/display-settings";
 import { cn } from "@/lib/utils";
 import { AlertBanner } from "./alerts-panel";
-import { CamerasSection } from "./cameras-section";
 import { CredentialsDialog } from "./credentials-dialog";
 import { ClassicTile } from "./classic-tile";
 import { OutageBanner, formatBackupTime, isGridOutage } from "./outage-banner";
@@ -376,8 +375,6 @@ function DashboardView({
           />
         </section>
         )}
-
-        {settings.showCameras ? <CamerasSection /> : null}
 
         <SystemPanel point={point} />
       </div>

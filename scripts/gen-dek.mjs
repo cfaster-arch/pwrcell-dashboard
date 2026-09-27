@@ -43,7 +43,7 @@ SETUP (run on the VPS as a privileged user; the app itself runs as the service u
      existing backup passphrase (alongside the Drive backups).
 
   5. Key loss = encrypted credentials are UNRECOVERABLE: PWRview logins must be
-     re-entered and Ring cameras re-paired. There is no recovery path — that is
+     re-entered. There is no recovery path — that is
      deliberate (bounded and honest, never silent corruption).
 
   6. Rotation: run this script again, add the new key under a new id ("k2"),

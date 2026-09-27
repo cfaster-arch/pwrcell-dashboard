@@ -1,10 +1,10 @@
 /**
  * Per-organization settings store (Phase 2).
  *
- * Named settings sections ("display", "alerts", "tou", "camera") live in the
+ * Named settings sections ("display", "alerts", "tou") live in the
  * org_settings.settings jsonb document, keyed by org_id. This replaces the
  * legacy per-setting JSON files in the app data dir (alert-settings.json,
- * tou-settings.json, display-settings.json, camera-settings.json).
+ * tou-settings.json, display-settings.json).
  *
  * Legacy import: on the first read for the default organization, when no row
  * (or an empty document) exists yet, the legacy files are imported once. That
@@ -25,7 +25,6 @@ const LEGACY_FILES: Record<string, string> = {
   alerts: "alert-settings.json",
   tou: "tou-settings.json",
   display: "display-settings.json",
-  camera: "camera-settings.json",
 };
 
 let legacyImportDone = false;

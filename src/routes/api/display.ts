@@ -55,7 +55,6 @@ export const Route = createFileRoute("/api/display")({
         if (typeof body.nightDim === "boolean") patch.nightDim = body.nightDim;
         if (typeof body.setupComplete === "boolean") patch.setupComplete = body.setupComplete;
         if (typeof body.showRates === "boolean") patch.showRates = body.showRates;
-        if (typeof body.showCameras === "boolean") patch.showCameras = body.showCameras;
         const next = await saveDisplaySettings(authz.orgId, patch);
         return Response.json(next, { headers: NO_STORE });
       },
