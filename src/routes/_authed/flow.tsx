@@ -3,14 +3,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
-  CartesianGrid,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
-import { clockLabel } from "@/lib/pwrcell/format";
 
 /**
  * /flow — full-screen 4-node energy flowchart for the wall kiosk.
@@ -120,7 +115,7 @@ function useFitFont(
     if (!box || !el) return;
     const fit = () => {
       const maxW = box.clientWidth * 0.92;
-      const maxH = box.clientHeight * 0.9;
+      const maxH = box.clientHeight * 0.62;
       let lo = 8;
       let hi = Math.max(16, Math.min(maxW, maxH * 1.6));
       for (let i = 0; i < 14; i++) {
@@ -140,50 +135,17 @@ function useFitFont(
   return { size, textRef };
 }
 
-function MiniTip({
-  active,
-  payload,
-  color,
-  timeZone,
-}: {
-  active?: boolean;
-  payload?: Array<{ payload: { ts: number; kw: number | null } }>;
-  color: string;
-  timeZone?: string | null;
-}) {
-  if (!active || !payload?.length) return null;
-  const p = payload[0]!.payload;
-  if (p.kw == null) return null;
-  return (
-    <div
-      style={{
-        background: "#1c211e",
-        border: "1px solid rgb(232 237 233 / 0.2)",
-        borderRadius: 8,
-        padding: "4px 10px",
-        fontSize: 12,
-        color: "#e8ede9",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span style={{ color: "#8b958e" }}>{clockLabel(p.ts, timeZone)}</span>{" "}
-      <strong style={{ color }}>{p.kw.toFixed(2)} kW</strong>
-    </div>
-  );
-}
-
 /**
- * A real chart, not a sparkline: 2-hour power history with a kW axis,
- * a time axis, and gridlines. One per flow box.
+ * A real chart as a translucent background layer behind the box's big
+ * number: 2-hour power history, correctly scaled — no axes, no grid,
+ * just the data, dimmed so the number stays the hero.
  */
-function FlowMiniChart({
+function FlowBgChart({
   metric,
   points,
-  timeZone,
 }: {
   metric: Metric;
   points: SeriesPoint[];
-  timeZone?: string | null;
 }) {
   const color = COLORS[metric];
   const data = useMemo(
@@ -198,44 +160,24 @@ function FlowMiniChart({
     [points, metric]
   );
   if (data.length < 2) return null;
-  const gid = `flowmini-${metric}`;
+  const gid = `flowbg-${metric}`;
   return (
     <ResponsiveContainer width="100%" height="100%" debounce={50}>
-      <AreaChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.45} />
-            <stop offset="100%" stopColor={color} stopOpacity={0.04} />
+            <stop offset="0%" stopColor={color} stopOpacity={0.55} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.06} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgb(232 237 233 / 0.08)" vertical={false} />
-        <XAxis
-          dataKey="ts"
-          tickFormatter={(v: number) => clockLabel(v, timeZone)}
-          minTickGap={48}
-          tick={{ fill: "#8b958e", fontSize: 11 }}
-          axisLine={{ stroke: "rgb(232 237 233 / 0.14)" }}
-          tickLine={false}
-        />
-        <YAxis
-          tickFormatter={(v: number) => `${Number(v.toFixed(1))}`}
-          width={40}
-          tick={{ fill: "#8b958e", fontSize: 11 }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <Tooltip
-          content={<MiniTip color={color} timeZone={timeZone} />}
-          cursor={{ stroke: color, strokeOpacity: 0.4 }}
-        />
         {SIGNED[metric] && (
-          <ReferenceLine y={0} stroke="rgb(232 237 233 / 0.25)" strokeDasharray="4 4" />
+          <ReferenceLine y={0} stroke="rgb(232 237 233 / 0.3)" strokeDasharray="4 4" />
         )}
         <Area
           type="monotone"
           dataKey="kw"
           stroke={color}
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill={`url(#${gid})`}
           dot={false}
           connectNulls={false}
@@ -250,18 +192,16 @@ function FlowBox(props: {
   label: string;
   metric: Metric;
   value: string;
-  unit?: string;
   sub: string;
   glow: boolean;
   points: SeriesPoint[];
-  timeZone?: string | null;
   onOpen: (metric: Metric) => void;
   boxRef: (el: HTMLDivElement | null) => void;
 }) {
   const color = COLORS[props.metric];
   const dim = DIMS[props.metric];
-  const valueRef = useRef<HTMLDivElement | null>(null);
-  const fit = useFitFont(valueRef, props.value);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const fit = useFitFont(innerRef, props.value);
   const open = () => props.onOpen(props.metric);
   return (
     <div
@@ -284,30 +224,26 @@ function FlowBox(props: {
           : `inset 0 0 60px ${dim}`,
       }}
     >
+      <div className="flow-chart-bg">
+        <FlowBgChart metric={props.metric} points={props.points} />
+      </div>
       <div className="flow-label" style={{ color }}>
         {props.label}
       </div>
-      <div className="flow-value-wrap" ref={valueRef}>
+      <div className="flow-value-wrap" ref={innerRef}>
         <span
           ref={fit.textRef}
           className="flow-value"
           style={{
             fontSize: fit.size,
             color,
-            textShadow: `0 0 24px ${dim}, 0 2px 12px rgb(0 0 0 / 0.8)`,
+            textShadow: `0 0 34px rgb(0 0 0 / 0.9), 0 0 18px ${dim}, 0 2px 12px rgb(0 0 0 / 0.9)`,
           }}
         >
           {props.value}
         </span>
-        <span className="flow-unit">{props.unit ?? "kW"}</span>
       </div>
       <div className="flow-sub">{props.sub}</div>
-      <div className="flow-chart">
-        <FlowMiniChart metric={props.metric} points={props.points} timeZone={props.timeZone} />
-      </div>
-      <div className="flow-tap-hint" style={{ color }}>
-        tap for charts →
-      </div>
     </div>
   );
 }
@@ -421,7 +357,6 @@ function FlowPage() {
   const batteryW = num(point?.batteryW);
   const gridW = num(point?.gridW);
   const soc = num(point?.batterySoc);
-  const timeZone = point?.timezone ?? null;
 
   const tSolar = useTweened(solarW);
   const tHome = useTweened(homeW);
@@ -460,25 +395,20 @@ function FlowPage() {
           grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
           gap: clamp(10px, 2vmin, 26px); padding: clamp(10px, 2vmin, 26px); box-sizing: border-box; }
         .flow-box { position: relative; border: 3px solid; border-radius: 22px;
-          background: #141816; display: flex; flex-direction: column; align-items: stretch;
-          overflow: hidden; transition: box-shadow 0.8s ease;
-          cursor: pointer; padding: clamp(8px, 1.6vmin, 18px); box-sizing: border-box; }
+          background: #141816; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; overflow: hidden; transition: box-shadow 0.8s ease;
+          cursor: pointer; }
         .flow-box:focus-visible { outline: 3px solid #e8ede9; outline-offset: -6px; }
         .flow-box:active { transform: scale(0.995); }
-        .flow-label { font-size: clamp(14px, 2.6vmin, 30px); font-weight: 800;
-          letter-spacing: 0.35em; text-indent: 0.35em; opacity: 0.95; text-align: center; }
-        .flow-value-wrap { display: flex; align-items: baseline; justify-content: center;
-          gap: 0.15em; padding: 2px 0; }
-        .flow-value { font-weight: 900; line-height: 1.1; white-space: nowrap;
-          font-variant-numeric: tabular-nums;
+        .flow-chart-bg { position: absolute; left: 2%; right: 2%; top: 12%; bottom: 10%;
+          z-index: 0; pointer-events: none; opacity: 0.55; }
+        .flow-label { position: absolute; z-index: 1; top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
+          font-weight: 800; letter-spacing: 0.35em; text-indent: 0.35em; opacity: 0.95; }
+        .flow-value-wrap { position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .flow-value { font-weight: 900; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
           font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
-        .flow-unit { font-size: clamp(12px, 2vmin, 22px); font-weight: 700; color: #8b958e; }
-        .flow-sub { text-align: center; font-size: clamp(11px, 2vmin, 22px);
+        .flow-sub { position: absolute; z-index: 1; bottom: 4.5%; font-size: clamp(13px, 2.4vmin, 28px);
           font-weight: 600; letter-spacing: 0.12em; color: #8b958e; text-transform: uppercase; }
-        .flow-chart { flex: 1 1 0; min-height: 0; margin-top: 4px; }
-        .flow-tap-hint { text-align: center; font-size: clamp(10px, 1.7vmin, 16px);
-          font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.55;
-          padding-top: 2px; }
         .flow-banner { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 18px; background: rgb(11 13 12 / 0.92);
           color: #e8ede9; text-align: center; padding: 32px; }
@@ -507,10 +437,9 @@ function FlowPage() {
           label="SOLAR"
           metric="solar"
           value={tSolar == null ? "—" : fmtKw(tSolar)}
-          sub={solarSub}
+          sub={`${solarSub} · kW`}
           glow={(solarW ?? 0) > 500}
           points={series}
-          timeZone={timeZone}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[0] = el; }}
         />
@@ -518,10 +447,9 @@ function FlowPage() {
           label="HOME"
           metric="home"
           value={tHome == null ? "—" : fmtKw(tHome)}
-          sub="consuming"
+          sub="consuming · kW"
           glow={false}
           points={series}
-          timeZone={timeZone}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[1] = el; }}
         />
@@ -529,11 +457,9 @@ function FlowPage() {
           label="BATTERY"
           metric="battery"
           value={tSoc == null ? "—" : `${Math.round(tSoc)}%`}
-          unit=""
           sub={batterySub}
           glow={charging || discharging}
           points={series}
-          timeZone={timeZone}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[2] = el; }}
         />
@@ -541,10 +467,9 @@ function FlowPage() {
           label="GRID"
           metric="grid"
           value={tGrid == null ? "—" : fmtKw(tGrid)}
-          sub={gridSub}
+          sub={`${gridSub} · kW`}
           glow={importing || exporting}
           points={series}
-          timeZone={timeZone}
           onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[3] = el; }}
         />
