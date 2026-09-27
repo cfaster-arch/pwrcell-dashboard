@@ -15,10 +15,14 @@
  * only the secret's `base64url(SHA-256)` hash). This is a dedicated, low-privilege
  * client (preview-only, `*.grok-sandbox.com`) — rotate it by regenerating the
  * broker env var and this constant together.
+ *
+ * PUBLIC REPO NOTE: the secret constant below was scrubbed before this repo
+ * went public. Grok live-preview sign-in will not work from a public clone
+ * (restore the real broker secret locally if you need it); production is
+ * unaffected — the deployer injects per-app `GROK_AUTH_*` overrides.
  */
 export const PREVIEW_CLIENT_ID = "grok_preview";
-export const PREVIEW_CLIENT_SECRET =
-  "8bcdb7fc5a33874ad933ca568918d5790388a0795e44c4d1dea691f801b17ec5";
+export const PREVIEW_CLIENT_SECRET = "SCRUBBED_FOR_PUBLIC_REPO";
 
 /** The shared auth broker issuer (OIDC discovery lives under it). */
 export const GROK_ISSUER_DEFAULT = "https://auth.grok.me";
