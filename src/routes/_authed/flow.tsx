@@ -100,45 +100,8 @@ function useTweened(target: number | null, ms = 600): number | null {
 }
 
 /**
- * Binary-search the largest font size that lets `textRef` fit inside
- * `boxRef` on one line. Re-runs on resize and when the text changes.
- */
-function useFitFont(
-  boxRef: React.RefObject<HTMLElement | null>,
-  text: string
-): { size: number; textRef: React.RefObject<HTMLSpanElement | null> } {
-  const textRef = useRef<HTMLSpanElement | null>(null);
-  const [size, setSize] = useState(72);
-  useEffect(() => {
-    const box = boxRef.current;
-    const el = textRef.current;
-    if (!box || !el) return;
-    const fit = () => {
-      const maxW = box.clientWidth * 0.92;
-      const maxH = box.clientHeight * 0.62;
-      let lo = 8;
-      let hi = Math.max(16, Math.min(maxW, maxH * 1.6));
-      for (let i = 0; i < 14; i++) {
-        const mid = (lo + hi) / 2;
-        el.style.fontSize = `${mid}px`;
-        if (el.scrollWidth <= maxW && el.scrollHeight <= maxH) lo = mid;
-        else hi = mid;
-      }
-      setSize(Math.floor(lo));
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(box);
-    return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxRef, text]);
-  return { size, textRef };
-}
-
-/**
- * A real chart as a translucent background layer behind the box's big
- * number: 2-hour power history, correctly scaled — no axes, no grid,
- * just the data, dimmed so the number stays the hero.
+ * A real chart as the background layer of each box: 2-hour power history,
+ * correctly scaled — no axes, no grid, just the data behind the number.
  */
 function FlowBgChart({
   metric,
@@ -200,8 +163,6 @@ function FlowBox(props: {
 }) {
   const color = COLORS[props.metric];
   const dim = DIMS[props.metric];
-  const innerRef = useRef<HTMLDivElement | null>(null);
-  const fit = useFitFont(innerRef, props.value);
   const open = () => props.onOpen(props.metric);
   return (
     <div
@@ -227,23 +188,21 @@ function FlowBox(props: {
       <div className="flow-chart-bg">
         <FlowBgChart metric={props.metric} points={props.points} />
       </div>
-      <div className="flow-label" style={{ color }}>
-        {props.label}
-      </div>
-      <div className="flow-value-wrap" ref={innerRef}>
-        <span
-          ref={fit.textRef}
+      <div className="flow-head">
+        <div className="flow-label" style={{ color }}>
+          {props.label}
+        </div>
+        <div
           className="flow-value"
           style={{
-            fontSize: fit.size,
             color,
-            textShadow: `0 0 34px rgb(0 0 0 / 0.9), 0 0 18px ${dim}, 0 2px 12px rgb(0 0 0 / 0.9)`,
+            textShadow: `0 0 26px rgb(0 0 0 / 0.95), 0 2px 10px rgb(0 0 0 / 0.95)`,
           }}
         >
           {props.value}
-        </span>
+        </div>
+        <div className="flow-sub">{props.sub}</div>
       </div>
-      <div className="flow-sub">{props.sub}</div>
     </div>
   );
 }
@@ -395,19 +354,20 @@ function FlowPage() {
           grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
           gap: clamp(10px, 2vmin, 26px); padding: clamp(10px, 2vmin, 26px); box-sizing: border-box; }
         .flow-box { position: relative; border: 3px solid; border-radius: 22px;
-          background: #141816; display: flex; flex-direction: column; align-items: center;
-          justify-content: center; overflow: hidden; transition: box-shadow 0.8s ease;
+          background: #141816; overflow: hidden; transition: box-shadow 0.8s ease;
           cursor: pointer; }
         .flow-box:focus-visible { outline: 3px solid #e8ede9; outline-offset: -6px; }
         .flow-box:active { transform: scale(0.995); }
-        .flow-chart-bg { position: absolute; left: 2%; right: 2%; top: 12%; bottom: 10%;
-          z-index: 0; pointer-events: none; opacity: 0.55; }
-        .flow-label { position: absolute; z-index: 1; top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
+        .flow-chart-bg { position: absolute; left: 2%; right: 2%; top: 34%; bottom: 3%;
+          z-index: 0; pointer-events: none; opacity: 0.85; }
+        .flow-head { position: absolute; z-index: 1; top: 0; left: 0; right: 0;
+          display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .flow-label { margin-top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
           font-weight: 800; letter-spacing: 0.35em; text-indent: 0.35em; opacity: 0.95; }
-        .flow-value-wrap { position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        .flow-value { font-weight: 900; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
+        .flow-value { font-size: clamp(44px, 10vmin, 120px); font-weight: 900; line-height: 1.15;
+          white-space: nowrap; font-variant-numeric: tabular-nums;
           font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
-        .flow-sub { position: absolute; z-index: 1; bottom: 4.5%; font-size: clamp(13px, 2.4vmin, 28px);
+        .flow-sub { font-size: clamp(13px, 2.4vmin, 28px);
           font-weight: 600; letter-spacing: 0.12em; color: #8b958e; text-transform: uppercase; }
         .flow-banner { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 18px; background: rgb(11 13 12 / 0.92);
