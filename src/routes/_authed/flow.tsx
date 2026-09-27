@@ -504,7 +504,7 @@ function FlowPage() {
           <div style={{ color: "#8b958e", maxWidth: 520 }}>
             Enter the PWRview login on the main dashboard to start live telemetry.
           </div>
-          <a href="/dashboard">Open dashboard</a>
+          <a href="/classic">Open dashboard</a>
         </div>
       )}
     </div>

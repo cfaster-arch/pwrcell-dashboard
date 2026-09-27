@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
+import { Route as AuthedClassicRouteImport } from './routes/_authed/classic'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedFlowRouteImport } from './routes/_authed/flow'
 import { Route as ApiAlertsRouteImport } from './routes/api/alerts'
@@ -46,6 +47,11 @@ const SigninRoute = SigninRouteImport.update({
 const AuthedIndexRoute = AuthedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedClassicRoute = AuthedClassicRouteImport.update({
+  id: '/classic',
+  path: '/classic',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -158,6 +164,7 @@ const ApiAdminUsersUserIdRevokeSessionsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthedIndexRoute
   '/signin': typeof SigninRoute
+  '/classic': typeof AuthedClassicRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
+  '/classic': typeof AuthedClassicRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authed': typeof AuthedRouteWithChildren
   '/signin': typeof SigninRoute
+  '/_authed/classic': typeof AuthedClassicRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/signin'
+    | '/classic'
     | '/dashboard'
     | '/flow'
     | '/api/alerts'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/signin'
+    | '/classic'
     | '/dashboard'
     | '/flow'
     | '/api/alerts'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authed'
     | '/signin'
+    | '/_authed/classic'
     | '/_authed/dashboard'
     | '/_authed/flow'
     | '/api/alerts'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthedIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/classic': {
+      id: '/_authed/classic'
+      path: '/classic'
+      fullPath: '/classic'
+      preLoaderRoute: typeof AuthedClassicRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -506,6 +525,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedClassicRoute: typeof AuthedClassicRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedFlowRoute: typeof AuthedFlowRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
@@ -515,6 +535,7 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedClassicRoute: AuthedClassicRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedFlowRoute: AuthedFlowRoute,
   AuthedIndexRoute: AuthedIndexRoute,

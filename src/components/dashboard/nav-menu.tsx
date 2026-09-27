@@ -16,7 +16,7 @@ import { useDisplaySettings } from "./display-settings-context";
 import { SettingsPanel } from "./settings-panel";
 
 const LINKS = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/flow", label: "Dashboard", icon: LayoutDashboard, search: { font: undefined } },
 ] as const;
 
 export function NavMenu({
@@ -120,6 +120,7 @@ export function NavMenu({
                   <li key={l.label}>
                     <Link
                       to={l.to}
+                      search={l.search}
                       onClick={() => setOpen(false)}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium",
