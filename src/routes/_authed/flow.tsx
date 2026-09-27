@@ -283,7 +283,7 @@ function Wire(props: { from: Pt; to: Pt; watts: number | null; reverse?: boolean
 
 function FlowPage() {
   const { font } = Route.useSearch();
-  const fontFamily = font ? FONT_FAMILIES[font] : undefined;
+  const fontFamily = font ? FONT_FAMILIES[font] : FONT_FAMILIES.anton;
   const [point, setPoint] = useState<LivePoint>(null);
   const [error, setError] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
