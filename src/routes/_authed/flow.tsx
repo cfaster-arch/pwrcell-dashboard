@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 /**
  * /flow — full-screen 4-node energy flowchart for the wall kiosk.
  * Nothing but four boxes (Solar / Home / Battery / Grid) filling the
- * viewport, each with a giant auto-fit value, animated flow wires between
- * them driven by live telemetry, and the dashboard's normal login gate
+ * viewport, each with a giant auto-fit value, a faint 2-hour power
+ * sparkline behind the number, animated flow wires between them driven
+ * by live telemetry, and the dashboard's normal login gate
  * (inherited from _authed: session required, temp-password enforced).
+ * Tapping a box opens its metric graphs page.
  */
 
 type Pt = { x: number; y: number };
@@ -101,33 +103,83 @@ function useFitFont(
 
 function FlowBox(props: {
   label: string;
+  metric: "solar" | "home" | "battery" | "grid";
   value: string;
   sub: string;
   color: string;
   dim: string;
   glow: boolean;
+  spark: (number | null)[];
+  onOpen: (metric: "solar" | "home" | "battery" | "grid") => void;
   boxRef: (el: HTMLDivElement | null) => void;
 }) {
   const innerRef = useRef<HTMLDivElement | null>(null);
   const fit = useFitFont(innerRef, props.value);
+  const open = () => props.onOpen(props.metric);
   return (
     <div
       ref={props.boxRef}
       className="flow-box"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${props.label.toLowerCase()} graphs`}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
       style={{ borderColor: props.color, boxShadow: props.glow ? `0 0 42px ${props.dim}, inset 0 0 60px ${props.dim}` : `inset 0 0 60px ${props.dim}` }}
     >
+      <Sparkline values={props.spark} color={props.color} />
       <div className="flow-label" style={{ color: props.color }}>{props.label}</div>
       <div className="flow-value-wrap" ref={innerRef}>
         <span
           ref={fit.textRef}
           className="flow-value"
-          style={{ fontSize: fit.size, color: props.color, textShadow: `0 0 24px ${props.dim}` }}
+          style={{ fontSize: fit.size, color: props.color, textShadow: `0 0 24px ${props.dim}, 0 2px 12px rgb(0 0 0 / 0.8)` }}
         >
           {props.value}
         </span>
       </div>
       <div className="flow-sub">{props.sub}</div>
     </div>
+  );
+}
+
+/** Faint area sparkline drawn behind a box's number. Purely decorative. */
+function Sparkline(props: { values: (number | null)[]; color: string }) {
+  const pts = props.values.map((v) => v ?? 0);
+  if (pts.length < 2) return null;
+  let min = pts[0];
+  let max = pts[0];
+  for (const v of pts) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const span = max - min || 1;
+  const step = 100 / (pts.length - 1);
+  const line = pts
+    .map((v, i) => {
+      const x = (i * step).toFixed(2);
+      const y = (37 - ((v - min) / span) * 34).toFixed(2);
+      return `${i === 0 ? "M" : "L"}${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <svg className="flow-spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+      <path d={`${line} L100,40 L0,40 Z`} fill={props.color} opacity={0.13} />
+      <path
+        d={line}
+        fill="none"
+        stroke={props.color}
+        strokeWidth={1.5}
+        opacity={0.45}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
 
@@ -155,6 +207,13 @@ function FlowPage() {
   const [point, setPoint] = useState<LivePoint>(null);
   const [error, setError] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
+  const [spark, setSpark] = useState<{
+    solar: (number | null)[];
+    home: (number | null)[];
+    battery: (number | null)[];
+    grid: (number | null)[];
+  }>({ solar: [], home: [], battery: [], grid: [] });
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const boxRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [centers, setCenters] = useState<Pt[]>([]);
@@ -180,6 +239,34 @@ function FlowPage() {
     };
     void poll();
     const id = window.setInterval(() => void poll(), POLL_MS);
+    return () => {
+      dead = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  // 2-hour power history behind each number. Refreshes every minute —
+  // no need to hammer it on the 5s live cadence.
+  useEffect(() => {
+    let dead = false;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/series?minutes=120", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (dead || !Array.isArray(j.points)) return;
+        setSpark({
+          solar: j.points.map((p: any) => (p.solarW ?? null) as number | null),
+          home: j.points.map((p: any) => (p.homeW ?? null) as number | null),
+          battery: j.points.map((p: any) => (p.batteryW ?? null) as number | null),
+          grid: j.points.map((p: any) => (p.gridW ?? null) as number | null),
+        });
+      } catch {
+        /* sparkline stays empty — the live number is what matters */
+      }
+    };
+    void load();
+    const id = window.setInterval(() => void load(), 60_000);
     return () => {
       dead = true;
       window.clearInterval(id);
@@ -236,6 +323,8 @@ function FlowPage() {
 
   const ready = centers.length === 4;
   // indices: 0 solar TL, 1 home TR, 2 battery BL, 3 grid BR
+  const openMetric = (metric: "solar" | "home" | "battery" | "grid") =>
+    navigate({ to: "/graphs/$metric", params: { metric } });
 
   return (
     <div className="flow-root" ref={containerRef}>
@@ -252,13 +341,18 @@ function FlowPage() {
           gap: clamp(10px, 2vmin, 26px); padding: clamp(10px, 2vmin, 26px); box-sizing: border-box; }
         .flow-box { position: relative; border: 3px solid; border-radius: 22px;
           background: #141816; display: flex; flex-direction: column; align-items: center;
-          justify-content: center; overflow: hidden; transition: box-shadow 0.8s ease; }
-        .flow-label { position: absolute; top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
+          justify-content: center; overflow: hidden; transition: box-shadow 0.8s ease;
+          cursor: pointer; }
+        .flow-box:focus-visible { outline: 3px solid #e8ede9; outline-offset: -6px; }
+        .flow-box:active { transform: scale(0.995); }
+        .flow-spark { position: absolute; left: 3%; right: 3%; top: 50%; transform: translateY(-50%);
+          width: 94%; height: 52%; z-index: 0; pointer-events: none; }
+        .flow-label { position: absolute; z-index: 1; top: 4%; font-size: clamp(14px, 2.6vmin, 30px);
           font-weight: 800; letter-spacing: 0.35em; text-indent: 0.35em; opacity: 0.95; }
-        .flow-value-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .flow-value-wrap { position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         .flow-value { font-weight: 900; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
           font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
-        .flow-sub { position: absolute; bottom: 4.5%; font-size: clamp(13px, 2.4vmin, 28px);
+        .flow-sub { position: absolute; z-index: 1; bottom: 4.5%; font-size: clamp(13px, 2.4vmin, 28px);
           font-weight: 600; letter-spacing: 0.12em; color: #8b958e; text-transform: uppercase; }
         .flow-banner { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 18px; background: rgb(11 13 12 / 0.92);
@@ -286,38 +380,50 @@ function FlowPage() {
       <div className="flow-grid">
         <FlowBox
           label="SOLAR"
+          metric="solar"
           value={tSolar == null ? "—" : fmtKw(tSolar)}
           sub={`${solarSub} · kW`}
           color="#e0a04a"
           dim="rgb(224 160 74 / 0.16)"
           glow={(solarW ?? 0) > 500}
+          spark={spark.solar}
+          onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[0] = el; }}
         />
         <FlowBox
           label="HOME"
+          metric="home"
           value={tHome == null ? "—" : fmtKw(tHome)}
           sub="consuming · kW"
           color="#e8ede9"
           dim="rgb(232 237 233 / 0.1)"
           glow={false}
+          spark={spark.home}
+          onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[1] = el; }}
         />
         <FlowBox
           label="BATTERY"
+          metric="battery"
           value={tSoc == null ? "—" : `${Math.round(tSoc)}%`}
           sub={batterySub}
           color="#3aae9a"
           dim="rgb(58 174 154 / 0.16)"
           glow={charging || discharging}
+          spark={spark.battery}
+          onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[2] = el; }}
         />
         <FlowBox
           label="GRID"
+          metric="grid"
           value={tGrid == null ? "—" : fmtKw(tGrid)}
           sub={`${gridSub} · kW`}
           color="#6d93c2"
           dim="rgb(109 147 194 / 0.16)"
           glow={importing || exporting}
+          spark={spark.grid}
+          onOpen={openMetric}
           boxRef={(el) => { boxRefs.current[3] = el; }}
         />
       </div>
@@ -330,7 +436,7 @@ function FlowPage() {
           <div style={{ color: "#8b958e", maxWidth: 520 }}>
             Enter the PWRview login on the main dashboard to start live telemetry.
           </div>
-          <a href="/">Open dashboard</a>
+          <a href="/dashboard">Open dashboard</a>
         </div>
       )}
     </div>

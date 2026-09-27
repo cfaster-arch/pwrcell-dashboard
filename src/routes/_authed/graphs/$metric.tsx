@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import type { LivePayload, SeriesPayload } from "@/lib/pwrcell/types";
 import type { DisplaySettings } from "@/lib/display-settings";
@@ -128,6 +128,13 @@ function MetricView({
       <div className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 2xl:max-w-[104rem] 2xl:px-10">
         <header className="flex items-center gap-3">
           <NavMenu onOpenLogin={() => setCredsOpen(true)} />
+          <Link
+            to="/flow"
+            aria-label="Back to energy flow"
+            className="rounded-lg p-2.5 text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <span aria-hidden="true" className="block text-xl leading-none">←</span>
+          </Link>
           <div>
             <p className="text-kicker tracking-[0.22em] text-muted uppercase">Generac PWRcell</p>
             <h1 className="mt-1 text-h1 font-medium tracking-tight text-fg">

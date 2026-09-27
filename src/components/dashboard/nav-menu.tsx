@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
-  BatteryCharging,
-  Home,
   KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
-  SunMedium,
   UserRound,
-  UtilityPole,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,15 +13,10 @@ import { authClient } from "@/lib/authn/client";
 import { AlertsSection } from "./alerts-panel";
 import { TouSettingsSection } from "./cost-section";
 import { useDisplaySettings } from "./display-settings-context";
-import { RingSetupSection } from "./ring-setup";
 import { SettingsPanel } from "./settings-panel";
 
 const LINKS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/graphs/$metric", metric: "solar", label: "Solar graphs", icon: SunMedium },
-  { to: "/graphs/$metric", metric: "home", label: "Home graphs", icon: Home },
-  { to: "/graphs/$metric", metric: "battery", label: "Battery graphs", icon: BatteryCharging },
-  { to: "/graphs/$metric", metric: "grid", label: "Grid graphs", icon: UtilityPole },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ] as const;
 
 export function NavMenu({
@@ -124,16 +115,11 @@ export function NavMenu({
                 </button>
               </li>
               {LINKS.map((l) => {
-                const href = "metric" in l ? `/graphs/${l.metric}` : l.to;
-                const active = pathname === href;
-                const dest =
-                  "metric" in l
-                    ? ({ to: "/graphs/$metric", params: { metric: l.metric } }) as const
-                    : ({ to: "/" }) as const;
+                const active = pathname === l.to;
                 return (
                   <li key={l.label}>
                     <Link
-                      {...dest}
+                      to={l.to}
                       onClick={() => setOpen(false)}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium",
@@ -157,12 +143,6 @@ export function NavMenu({
               <>
                 <div className="my-5 border-t border-border" role="separator" />
                 <TouSettingsSection />
-              </>
-            ) : null}
-            {settings.showCameras ? (
-              <>
-                <div className="my-5 border-t border-border" role="separator" />
-                <RingSetupSection />
               </>
             ) : null}
             <p className="mt-auto px-2 pt-4 text-xs leading-relaxed text-subtle">

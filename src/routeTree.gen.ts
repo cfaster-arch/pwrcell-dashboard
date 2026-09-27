@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
+import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedFlowRouteImport } from './routes/_authed/flow'
 import { Route as ApiAlertsRouteImport } from './routes/api/alerts'
 import { Route as ApiAlertsSettingsRouteImport } from './routes/api/alerts-settings'
 import { Route as ApiAuthConfigRouteImport } from './routes/api/auth-config'
@@ -23,7 +25,6 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiHomesRouteImport } from './routes/api/homes'
 import { Route as ApiLiveRouteImport } from './routes/api/live'
-import { Route as ApiRingRouteImport } from './routes/api/ring'
 import { Route as ApiSeriesRouteImport } from './routes/api/series'
 import { Route as ApiTouRouteImport } from './routes/api/tou'
 import { Route as AuthedAccountIndexRouteImport } from './routes/_authed/account/index'
@@ -31,7 +32,6 @@ import { Route as AuthedAccountPasswordRouteImport } from './routes/_authed/acco
 import { Route as AuthedGraphsMetricRouteImport } from './routes/_authed/graphs/$metric'
 import { Route as ApiAdminAuditRouteImport } from './routes/api/admin/audit'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiRtcSplatRouteImport } from './routes/api/rtc.$'
 import { Route as ApiAdminUsersUserIdRevokeSessionsRouteImport } from './routes/api/admin/users.$userId.revoke-sessions'
 
 const AuthedRoute = AuthedRouteImport.update({
@@ -46,6 +46,16 @@ const SigninRoute = SigninRouteImport.update({
 const AuthedIndexRoute = AuthedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedFlowRoute = AuthedFlowRouteImport.update({
+  id: '/flow',
+  path: '/flow',
   getParentRoute: () => AuthedRoute,
 } as any)
 const ApiAlertsRoute = ApiAlertsRouteImport.update({
@@ -103,11 +113,6 @@ const ApiLiveRoute = ApiLiveRouteImport.update({
   path: '/api/live',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRingRoute = ApiRingRouteImport.update({
-  id: '/api/ring',
-  path: '/api/ring',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiSeriesRoute = ApiSeriesRouteImport.update({
   id: '/api/series',
   path: '/api/series',
@@ -143,11 +148,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRtcSplatRoute = ApiRtcSplatRouteImport.update({
-  id: '/api/rtc/$',
-  path: '/api/rtc/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAdminUsersUserIdRevokeSessionsRoute =
   ApiAdminUsersUserIdRevokeSessionsRouteImport.update({
     id: '/api/admin/users/$userId/revoke-sessions',
@@ -158,6 +158,8 @@ const ApiAdminUsersUserIdRevokeSessionsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthedIndexRoute
   '/signin': typeof SigninRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/auth-config': typeof ApiAuthConfigRoute
@@ -169,19 +171,19 @@ export interface FileRoutesByFullPath {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
-  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/account/password': typeof AuthedAccountPasswordRoute
   '/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/rtc/$': typeof ApiRtcSplatRoute
   '/account/': typeof AuthedAccountIndexRoute
   '/api/admin/users/$userId/revoke-sessions': typeof ApiAdminUsersUserIdRevokeSessionsRoute
 }
 export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/auth-config': typeof ApiAuthConfigRoute
@@ -193,7 +195,6 @@ export interface FileRoutesByTo {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
-  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/': typeof AuthedIndexRoute
@@ -201,7 +202,6 @@ export interface FileRoutesByTo {
   '/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/rtc/$': typeof ApiRtcSplatRoute
   '/account': typeof AuthedAccountIndexRoute
   '/api/admin/users/$userId/revoke-sessions': typeof ApiAdminUsersUserIdRevokeSessionsRoute
 }
@@ -209,6 +209,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authed': typeof AuthedRouteWithChildren
   '/signin': typeof SigninRoute
+  '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/flow': typeof AuthedFlowRoute
   '/api/alerts': typeof ApiAlertsRoute
   '/api/alerts-settings': typeof ApiAlertsSettingsRoute
   '/api/auth-config': typeof ApiAuthConfigRoute
@@ -220,7 +222,6 @@ export interface FileRoutesById {
   '/api/history': typeof ApiHistoryRoute
   '/api/homes': typeof ApiHomesRoute
   '/api/live': typeof ApiLiveRoute
-  '/api/ring': typeof ApiRingRoute
   '/api/series': typeof ApiSeriesRoute
   '/api/tou': typeof ApiTouRoute
   '/_authed/': typeof AuthedIndexRoute
@@ -228,7 +229,6 @@ export interface FileRoutesById {
   '/_authed/graphs/$metric': typeof AuthedGraphsMetricRoute
   '/api/admin/audit': typeof ApiAdminAuditRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/rtc/$': typeof ApiRtcSplatRoute
   '/_authed/account/': typeof AuthedAccountIndexRoute
   '/api/admin/users/$userId/revoke-sessions': typeof ApiAdminUsersUserIdRevokeSessionsRoute
 }
@@ -237,6 +237,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/signin'
+    | '/dashboard'
+    | '/flow'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/auth-config'
@@ -248,19 +250,19 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
-    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/account/password'
     | '/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
-    | '/api/rtc/$'
     | '/account/'
     | '/api/admin/users/$userId/revoke-sessions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/signin'
+    | '/dashboard'
+    | '/flow'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/auth-config'
@@ -272,7 +274,6 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
-    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/'
@@ -280,13 +281,14 @@ export interface FileRouteTypes {
     | '/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
-    | '/api/rtc/$'
     | '/account'
     | '/api/admin/users/$userId/revoke-sessions'
   id:
     | '__root__'
     | '/_authed'
     | '/signin'
+    | '/_authed/dashboard'
+    | '/_authed/flow'
     | '/api/alerts'
     | '/api/alerts-settings'
     | '/api/auth-config'
@@ -298,7 +300,6 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/homes'
     | '/api/live'
-    | '/api/ring'
     | '/api/series'
     | '/api/tou'
     | '/_authed/'
@@ -306,7 +307,6 @@ export interface FileRouteTypes {
     | '/_authed/graphs/$metric'
     | '/api/admin/audit'
     | '/api/auth/$'
-    | '/api/rtc/$'
     | '/_authed/account/'
     | '/api/admin/users/$userId/revoke-sessions'
   fileRoutesById: FileRoutesById
@@ -325,12 +325,10 @@ export interface RootRouteChildren {
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiHomesRoute: typeof ApiHomesRoute
   ApiLiveRoute: typeof ApiLiveRoute
-  ApiRingRoute: typeof ApiRingRoute
   ApiSeriesRoute: typeof ApiSeriesRoute
   ApiTouRoute: typeof ApiTouRoute
   ApiAdminAuditRoute: typeof ApiAdminAuditRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiRtcSplatRoute: typeof ApiRtcSplatRoute
   ApiAdminUsersUserIdRevokeSessionsRoute: typeof ApiAdminUsersUserIdRevokeSessionsRoute
 }
 
@@ -355,6 +353,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthedIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/dashboard': {
+      id: '/_authed/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/flow': {
+      id: '/_authed/flow'
+      path: '/flow'
+      fullPath: '/flow'
+      preLoaderRoute: typeof AuthedFlowRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/api/alerts': {
@@ -434,13 +446,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/ring': {
-      id: '/api/ring'
-      path: '/api/ring'
-      fullPath: '/api/ring'
-      preLoaderRoute: typeof ApiRingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/series': {
       id: '/api/series'
       path: '/api/series'
@@ -490,13 +495,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/rtc/$': {
-      id: '/api/rtc/$'
-      path: '/api/rtc/$'
-      fullPath: '/api/rtc/$'
-      preLoaderRoute: typeof ApiRtcSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/admin/users/$userId/revoke-sessions': {
       id: '/api/admin/users/$userId/revoke-sessions'
       path: '/api/admin/users/$userId/revoke-sessions'
@@ -508,6 +506,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedFlowRoute: typeof AuthedFlowRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
   AuthedAccountPasswordRoute: typeof AuthedAccountPasswordRoute
   AuthedGraphsMetricRoute: typeof AuthedGraphsMetricRoute
@@ -515,6 +515,8 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedFlowRoute: AuthedFlowRoute,
   AuthedIndexRoute: AuthedIndexRoute,
   AuthedAccountPasswordRoute: AuthedAccountPasswordRoute,
   AuthedGraphsMetricRoute: AuthedGraphsMetricRoute,
@@ -538,12 +540,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHistoryRoute: ApiHistoryRoute,
   ApiHomesRoute: ApiHomesRoute,
   ApiLiveRoute: ApiLiveRoute,
-  ApiRingRoute: ApiRingRoute,
   ApiSeriesRoute: ApiSeriesRoute,
   ApiTouRoute: ApiTouRoute,
   ApiAdminAuditRoute: ApiAdminAuditRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiRtcSplatRoute: ApiRtcSplatRoute,
   ApiAdminUsersUserIdRevokeSessionsRoute:
     ApiAdminUsersUserIdRevokeSessionsRoute,
 }
